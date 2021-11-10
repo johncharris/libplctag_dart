@@ -68,12 +68,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   _getTags() async {
     var tag = Tag(TagInfoPlcMapper())
-      ..Gateway = "192.168.39.170"
-      ..Path = "1,0"
+      ..gateway = "192.168.39.170"
+      ..path = "1,0"
       ..plcType = PlcType.ControlLogix
       ..protocol = Protocol.AllenBradleyEIP
-      ..Name = "@tags"
-      ..Timeout = const Duration(seconds: 10);
+      ..name = "@tags"
+      ..timeout = const Duration(seconds: 10);
 
     tag.Read();
 
@@ -104,12 +104,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     if (mapper != null) {
       var tag = Tag(mapper)
-        ..Gateway = "192.168.39.170"
-        ..Path = "1,0"
+        ..gateway = "192.168.39.170"
+        ..path = "1,0"
         ..plcType = PlcType.ControlLogix
         ..protocol = Protocol.AllenBradleyEIP
-        ..Name = tagInfo.name
-        ..Timeout = const Duration(seconds: 10);
+        ..name = tagInfo.name
+        ..timeout = const Duration(seconds: 10);
 
       tag.Read();
       return tag.Value.toString();

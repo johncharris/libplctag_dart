@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
-import 'package:libplctag_dart/inativeTag.dart';
+import 'package:libplctag_dart/native_tag_base.dart';
 import 'package:libplctag_dart/native/plctag.dart';
 
-class NativeTag implements INativeTag {
+class NativeTag implements NativeTagBase {
   int plc_tag_check_lib_version(int req_major, int req_minor, int req_patch) =>
       plctag.plc_tag_check_lib_version(req_major, req_minor, req_patch);
   int plc_tag_create(String lpString, int timeout) => plctag.plc_tag_create(lpString, timeout);

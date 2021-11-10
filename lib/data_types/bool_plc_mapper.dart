@@ -24,20 +24,20 @@ class BoolPlcMapper extends IPlcMapper<bool> //, IPlcMapper<bool[]>, IPlcMapper<
     List<bool> buffer = List.filled(tag.ElementCount! * 32, false);
 
     for (int ii = 0; ii < tag.ElementCount! * 32; ii++) {
-      buffer[ii] = tag.GetBit(ii);
+      buffer[ii] = tag.getBit(ii);
     }
     return buffer;
   }
 
   void encodeArray(Tag tag, List<bool> values) {
     for (int ii = 0; ii < tag.ElementCount! * 32; ii++) {
-      tag.SetBit(ii, values[ii]);
+      tag.setBit(ii, values[ii]);
     }
   }
 
-  bool decode(Tag tag) => tag.plcType == PlcType.Omron ? tag.GetUInt8(0) != 0 : tag.GetUInt8(0) == 255;
+  bool decode(Tag tag) => tag.plcType == PlcType.Omron ? tag.getUInt8(0) != 0 : tag.getUInt8(0) == 255;
 
-  void encode(Tag tag, bool value) => tag.SetUInt8(0, value == true ? 255 : 0);
+  void encode(Tag tag, bool value) => tag.setUInt8(0, value == true ? 255 : 0);
 
   List<int>? _arrayDimensions = [];
   List<int>? get arrayDimensions => _arrayDimensions;

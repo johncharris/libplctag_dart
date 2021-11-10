@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:libplctag_dart/debug_level.dart';
 import 'package:libplctag_dart/libplctag_dart.dart';
 import 'package:libplctag_dart/native_tag.dart';
@@ -77,15 +79,15 @@ class Tag {
   /// This can be used to lower the actual number of requests against the PLC.
   /// Example read_cache_ms=100 will result in read operations no more often than once every 100 milliseconds.
   /// </summary>
-  int? get ReadCacheMillisecondDuration => _tag.ReadCacheMillisecondDuration;
-  set ReadCacheMillisecondDuration(value) => _tag.ReadCacheMillisecondDuration = value;
+  int? get ReadCacheMillisecondDuration => _tag.readCacheMillisecondDuration;
+  set ReadCacheMillisecondDuration(value) => _tag.readCacheMillisecondDuration = value;
 
   /// <summary>
   /// A timeout value that is used for Initialize/Read/Write methods.
   /// It applies to both synchronous and asynchronous calls.
   /// </summary>
-  Duration? get Timeout => _tag.Timeout;
-  set Timeout(value) => _tag.Timeout = value;
+  Duration? get Timeout => _tag.timeout;
+  set Timeout(value) => _tag.timeout = value;
 
   /// <summary>
   /// Optional. Control whether to use connected or unconnected messaging.
@@ -208,18 +210,7 @@ class Tag {
   /// Can only be called once per instance.
   /// Timeout is controlled via class property.
   /// </remarks>
-  void Initialize() => _tag.Initialize();
-
-  // /// <summary>
-  // /// Creates the underlying data structures and references required before tag operations.
-  // /// </summary>
-  // ///
-  // /// <remarks>
-  // /// Initializes the tag by establishing necessary connections.
-  // /// Can only be called once per instance.
-  // /// Timeout is controlled via class property.
-  // /// </remarks>
-  // Future InitializeAsync(CancellationToken token = default) => _tag.InitializeAsync(token);
+  void Initialize() => _tag.initialize();
 
   /// <summary>
   /// Executes a synchronous read on a tag.
@@ -231,19 +222,7 @@ class Tag {
   /// The data is not automatically kept up to date.
   /// If you need to find out the data periodically, you need to read the tag periodically.
   /// </remarks>
-  void Read() => _tag.Read();
-
-  // /// <summary>
-  // /// Executes an asynchronous read on a tag.
-  // /// Timeout is controlled via class property.
-  // /// </summary>
-  // ///
-  // /// <remarks>
-  // /// Reading a tag brings the data at the time of read into the local memory of the PC running the library.
-  // /// The data is not automatically kept up to date.
-  // /// If you need to find out the data periodically, you need to read the tag periodically.
-  // /// </remarks>
-  // Task ReadAsync(CancellationToken token = default) => _tag.ReadAsync(token);
+  void read() => _tag.read();
 
   /// <summary>
   /// Executes a synchronous write on a tag.
@@ -253,107 +232,61 @@ class Tag {
   /// <remarks>
   /// Writing a tag sends the data from local memory to the target PLC.
   /// </remarks>
-  void Write() => _tag.Write();
+  void write() => _tag.write();
 
-  // /// <summary>
-  // /// Executes an asynchronous write on a tag.
-  // /// Timeout is controlled via class property.
-  // /// </summary>
-  // ///
-  // /// <remarks>
-  // /// Writing a tag sends the data from local memory to the target PLC.
-  // /// </remarks>
-  // Task WriteAsync(CancellationToken token = default) => _tag.WriteAsync(token);
+  void abort() => _tag.abort();
+  void dispose() => _tag.dispose();
 
-  void Abort() => _tag.Abort();
-  void Dispose() => _tag.Dispose();
+  /// <summary>
+  /// This function retrieves a segment of raw, unprocessed bytes from the tag buffer.
+  /// </summary>
+  Uint8List getBuffer() => _tag.getBuffer();
 
-  // /// <summary>
-  // /// This function retrieves a segment of raw, unprocessed bytes from the tag buffer.
-  // /// </summary>
-  // byte[] GetBuffer()                           => _tag.GetBuffer();
-  int GetSize() => _tag.GetSize();
-  void SetSize(int newSize) => _tag.SetSize(newSize);
+  int getSize() => _tag.getSize();
+  void setSize(int newSize) => _tag.setSize(newSize);
 
   /// <summary>
   /// Check the operational status of the tag
   /// </summary>
   /// <returns>Tag's current status</returns>
-  Status GetStatus() => _tag.GetStatus();
+  Status getStatus() => _tag.getStatus();
 
-  bool GetBit(int offset) => _tag.GetBit(offset);
-  void SetBit(int offset, bool value) => _tag.SetBit(offset, value);
+  bool getBit(int offset) => _tag.getBit(offset);
+  void setBit(int offset, bool value) => _tag.setBit(offset, value);
 
-  double GetFloat32(int offset) => _tag.GetFloat32(offset);
-  void SetFloat32(int offset, double value) => _tag.SetFloat32(offset, value);
+  double getFloat32(int offset) => _tag.getFloat32(offset);
+  void setFloat32(int offset, double value) => _tag.setFloat32(offset, value);
 
-  double GetFloat64(int offset) => _tag.GetFloat64(offset);
-  void SetFloat64(int offset, double value) => _tag.SetFloat64(offset, value);
+  double getFloat64(int offset) => _tag.getFloat64(offset);
+  void setFloat64(int offset, double value) => _tag.setFloat64(offset, value);
 
-  int GetInt8(int offset) => _tag.GetInt8(offset);
-  void SetInt8(int offset, int value) => _tag.SetInt8(offset, value);
+  int getInt8(int offset) => _tag.getInt8(offset);
+  void setInt8(int offset, int value) => _tag.setInt8(offset, value);
 
-  int GetInt16(int offset) => _tag.GetInt16(offset);
-  void SetInt16(int offset, int value) => _tag.SetInt16(offset, value);
+  int getInt16(int offset) => _tag.getInt16(offset);
+  void setInt16(int offset, int value) => _tag.setInt16(offset, value);
 
-  int GetInt32(int offset) => _tag.GetInt32(offset);
-  void SetInt32(int offset, int value) => _tag.SetInt32(offset, value);
+  int getInt32(int offset) => _tag.getInt32(offset);
+  void setInt32(int offset, int value) => _tag.setInt32(offset, value);
 
-  int GetInt64(int offset) => _tag.GetInt64(offset);
-  void SetInt64(int offset, int value) => _tag.SetInt64(offset, value);
+  int getInt64(int offset) => _tag.getInt64(offset);
+  void setInt64(int offset, int value) => _tag.setInt64(offset, value);
 
-  int GetUInt8(int offset) => _tag.GetUInt8(offset);
-  void SetUInt8(int offset, int value) => _tag.SetUInt8(offset, value);
+  int getUInt8(int offset) => _tag.getUInt8(offset);
+  void setUInt8(int offset, int value) => _tag.setUInt8(offset, value);
 
-  int GetUInt16(int offset) => _tag.GetUInt16(offset);
-  void SetUInt16(int offset, int value) => _tag.SetUInt16(offset, value);
+  int getUInt16(int offset) => _tag.getUInt16(offset);
+  void setUInt16(int offset, int value) => _tag.setUInt16(offset, value);
 
-  int GetUInt32(int offset) => _tag.GetUInt32(offset);
-  void SetUInt32(int offset, int value) => _tag.SetUInt32(offset, value);
+  int getUInt32(int offset) => _tag.getUInt32(offset);
+  void setUInt32(int offset, int value) => _tag.setUInt32(offset, value);
 
-  int GetUInt64(int offset) => _tag.GetUInt64(offset);
-  void SetUInt64(int offset, int value) => _tag.SetUInt64(offset, value);
+  int getUInt64(int offset) => _tag.getUInt64(offset);
+  void setUInt64(int offset, int value) => _tag.setUInt64(offset, value);
 
-  void setString(int offset, String value) => _tag.SetString(offset, value);
-  int getStringLength(int offset) => _tag.GetStringLength(offset);
-  int getStringTotalLength(int offset) => _tag.GetStringTotalLength(offset);
-  int getStringCapacity(int offset) => _tag.GetStringCapacity(offset);
-  String getString(int offset) => _tag.GetString(offset);
-
-  // event EventHandler<TagEventArgs> ReadStarted
-  // {
-  //     add => _tag.ReadStarted += value;
-  //     remove => _tag.ReadStarted -= value;
-  // }
-  // event EventHandler<TagEventArgs> ReadCompleted
-  // {
-  //     add => _tag.ReadCompleted += value;
-  //     remove => _tag.ReadCompleted -= value;
-  // }
-  // event EventHandler<TagEventArgs> WriteStarted
-  // {
-  //     add => _tag.WriteStarted += value;
-  //     remove => _tag.WriteStarted -= value;
-  // }
-  // event EventHandler<TagEventArgs> WriteCompleted
-  // {
-  //     add => _tag.WriteCompleted += value;
-  //     remove => _tag.WriteCompleted -= value;
-  // }
-  // event EventHandler<TagEventArgs> Aborted
-  // {
-  //     add => _tag.Aborted += value;
-  //     remove => _tag.Aborted -= value;
-  // }
-  // event EventHandler<TagEventArgs> Destroyed
-  // {
-  //     add => _tag.Destroyed += value;
-  //     remove => _tag.Destroyed -= value;
-  // }
-
-  // ~Tag()
-  // {
-  //     Dispose();
-  // }
-
+  void setString(int offset, String value) => _tag.setString(offset, value);
+  int getStringLength(int offset) => _tag.getStringLength(offset);
+  int getStringTotalLength(int offset) => _tag.getStringTotalLength(offset);
+  int getStringCapacity(int offset) => _tag.getStringCapacity(offset);
+  String getString(int offset) => _tag.getString(offset);
 }

@@ -21,7 +21,7 @@ abstract class PlcMapperBase<T> extends IPlcMapper<T> // IPlcMapper<T[]>, // IPl
 
     var buffer = <T>[];
 
-    var tagSize = tag.GetSize();
+    var tagSize = tag.getSize();
 
     int offset = 0;
     while (offset < tagSize) {

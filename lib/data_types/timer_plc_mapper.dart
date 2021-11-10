@@ -9,9 +9,9 @@ class TimerPlcMapper extends PlcMapperBase<AbTimer> {
 
   AbTimer decodeAtOffset(Tag tag, int offset) {
     // Needed to look at RsLogix documentation for structure of TIMER
-    var DINT2 = tag.GetInt32(offset);
-    var DINT1 = tag.GetInt32(offset + 4);
-    var DINT0 = tag.GetInt32(offset + 8);
+    var DINT2 = tag.getInt32(offset);
+    var DINT1 = tag.getInt32(offset + 4);
+    var DINT0 = tag.getInt32(offset + 8);
 
     // The third DINT packs a few BOOLs into it
     var bitArray = BitArray.fromByteBuffer(Uint32List.fromList([DINT2]).buffer);
@@ -36,9 +36,9 @@ class TimerPlcMapper extends PlcMapperBase<AbTimer> {
     asdf[31] = value.enabled;
     var DINT2 = BitArrayToInt(asdf);
 
-    tag.SetInt32(offset, DINT2);
-    tag.SetInt32(offset + 4, DINT1);
-    tag.SetInt32(offset + 8, DINT0);
+    tag.setInt32(offset, DINT2);
+    tag.setInt32(offset + 4, DINT1);
+    tag.setInt32(offset + 8, DINT0);
   }
 
   static int BitArrayToInt(BitArray? binary) {

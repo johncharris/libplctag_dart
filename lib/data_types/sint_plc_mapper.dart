@@ -3,11 +3,11 @@ import 'package:libplctag_dart/tag.dart';
 
 class SintPlcMapper extends PlcMapperBase<int> {
   @override
-  int decodeAtOffset(Tag tag, int offset) => tag.GetInt8(offset);
+  int decodeAtOffset(Tag tag, int offset) => tag.getInt8(offset);
 
   @override
   int? get elementSize => 1;
 
   @override
-  void encodeAtOffset(Tag tag, int offset, int value) => tag.SetInt8(offset, value);
+  void encodeAtOffset(Tag tag, int offset, int value) => tag.setInt8(offset, value);
 }

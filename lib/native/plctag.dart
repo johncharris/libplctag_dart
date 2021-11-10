@@ -305,7 +305,17 @@ class plctag {
 
   static int plc_tag_get_raw_bytes(int tag_id, int start_offset, Uint8List buffer, int buffer_length) {
     _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_raw_bytes(tag_id, start_offset, buffer.allocatePointer(), buffer_length);
+
+    var ptr = malloc.allocate<Uint8>(buffer_length);
+
+    var result = NativeMethods.plc_tag_get_raw_bytes(tag_id, start_offset, ptr, buffer_length);
+
+    if (result == STATUS_CODES.PLCTAG_STATUS_OK.value) {
+      for (int i = 0; i < buffer_length; i++) {
+        buffer[i] = ptr.elementAt(i).value;
+      }
+    }
+    return result;
   }
 
   static int plc_tag_set_raw_bytes(int tag_id, int start_offset, Uint8List buffer, int buffer_length) {

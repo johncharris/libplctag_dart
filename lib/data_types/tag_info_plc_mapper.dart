@@ -22,17 +22,17 @@ class TagInfoPlcMapper implements IPlcMapper<List<TagInfo>> {
   set arrayDimensions(value) => throw new Exception("This plcMapper can only be used to read Tag Information");
 
   Tuple2<TagInfo, int> DecodeTagInfo(Tag tag, int offset) {
-    var tagInstanceId = tag.GetUInt32(offset);
-    var tagType = tag.GetUInt16(offset + 4);
-    var tagLength = tag.GetUInt16(offset + 6);
-    var tagArrayDims = <int>[tag.GetUInt32(offset + 8), tag.GetUInt32(offset + 12), tag.GetUInt32(offset + 16)];
+    var tagInstanceId = tag.getUInt32(offset);
+    var tagType = tag.getUInt16(offset + 4);
+    var tagLength = tag.getUInt16(offset + 6);
+    var tagArrayDims = <int>[tag.getUInt32(offset + 8), tag.getUInt32(offset + 12), tag.getUInt32(offset + 16)];
 
-    var apparentTagNameLength = tag.GetUInt16(offset + 20);
+    var apparentTagNameLength = tag.getUInt16(offset + 20);
     var actualTagNameLength = math.min(apparentTagNameLength, TAG_STRING_SIZE * 2 - 1);
 
     var tagNameGenerator = BytesBuilder();
     for (int i = offset + 22; i < offset + 22 + actualTagNameLength; i++) {
-      tagNameGenerator.addByte(tag.GetUInt8(i));
+      tagNameGenerator.addByte(tag.getUInt8(i));
     }
     var tagNameBytes = tagNameGenerator.toBytes();
 
@@ -46,7 +46,7 @@ class TagInfoPlcMapper implements IPlcMapper<List<TagInfo>> {
   List<TagInfo> decode(Tag tag) {
     var buffer = <TagInfo>[];
 
-    var tagSize = tag.GetSize();
+    var tagSize = tag.getSize();
 
     int offset = 0;
     while (offset < tagSize) {

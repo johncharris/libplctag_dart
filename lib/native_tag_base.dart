@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-abstract class INativeTag {
+abstract class NativeTagBase {
   int plc_tag_abort(int tag);
   int plc_tag_check_lib_version(int req_major, int req_minor, int req_patch);
   int plc_tag_create(String lpString, int timeout);

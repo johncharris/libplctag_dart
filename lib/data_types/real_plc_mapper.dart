@@ -3,11 +3,11 @@ import 'package:libplctag_dart/tag.dart';
 
 class RealPlcMapper extends PlcMapperBase<double> {
   @override
-  double decodeAtOffset(Tag tag, int offset) => tag.GetFloat32(offset);
+  double decodeAtOffset(Tag tag, int offset) => tag.getFloat32(offset);
 
   @override
   int? get elementSize => 4;
 
   @override
-  void encodeAtOffset(Tag tag, int offset, double value) => tag.SetFloat32(offset, value);
+  void encodeAtOffset(Tag tag, int offset, double value) => tag.setFloat32(offset, value);
 }
