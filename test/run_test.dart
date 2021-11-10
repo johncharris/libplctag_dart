@@ -1,4 +1,3 @@
-import 'package:libplctag_dart/libplctag_dart.dart';
 import 'package:test/test.dart';
 
 void main() {

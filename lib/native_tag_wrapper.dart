@@ -1,9 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:libplctag_dart/debug_level.dart';
 import 'package:libplctag_dart/inativeTag.dart';
 import 'package:libplctag_dart/libplctag_exception.dart';
-import 'package:libplctag_dart/native/plctag.dart';
 import 'package:libplctag_dart/plc_type.dart';
 import 'package:libplctag_dart/status.dart';
 
@@ -508,20 +505,20 @@ class NativeTagWrapper {
       GetNativeValueAndThrowOnSpecificResult(_native.plc_tag_get_float32, offset, double.minPositive);
   void SetFloat32(int offset, double value) => SetNativeTagValue(_native.plc_tag_set_float32, offset, value);
 
-//TODO Reenable this
-  // void SetString(int offset, String value)     => SetNativeTagValue(_native.plc_tag_set_string, offset, value);
-  // int GetStringLength(int offset)              => GetNativeValueAndThrowOnNegativeResult(_native.plc_tag_get_string_length, offset);
-  // int GetStringCapacity(int offset)            => GetNativeValueAndThrowOnNegativeResult(_native.plc_tag_get_string_capacity, offset);
-  // int GetStringTotalLength(int offset)         => GetNativeValueAndThrowOnNegativeResult(_native.plc_tag_get_string_total_length, offset);
-  // string GetString(int offset)
-  // {
-  //     ThrowIfAlreadyDisposed();
-  //     var stringLength = GetStringLength(offset);
-  //     var sb = new StringBuilder(stringLength);
-  //     var status = (Status)_native.plc_tag_get_string(nativeTagHandle, offset, sb, stringLength);
-  //     ThrowIfStatusNotOk(status);
-  //     return sb.ToString().Substring(0, stringLength);
-  // }
+  void SetString(int offset, String value) => SetNativeTagValue(_native.plc_tag_set_string, offset, value);
+  int GetStringLength(int offset) => GetNativeValueAndThrowOnNegativeResult(_native.plc_tag_get_string_length, offset);
+  int GetStringCapacity(int offset) =>
+      GetNativeValueAndThrowOnNegativeResult(_native.plc_tag_get_string_capacity, offset);
+  int GetStringTotalLength(int offset) =>
+      GetNativeValueAndThrowOnNegativeResult(_native.plc_tag_get_string_total_length, offset);
+  String GetString(int offset) {
+    ThrowIfAlreadyDisposed();
+    var stringLength = GetStringLength(offset);
+    var sb = new StringBuffer();
+    var status = Status.fromInt(_native.plc_tag_get_string(nativeTagHandle, offset, sb, stringLength));
+    ThrowIfStatusNotOk(status);
+    return sb.toString();
+  }
 
   void ThrowIfAlreadyDisposed() {
     if (_isDisposed) throw new Exception(this.runtimeType);
@@ -554,7 +551,7 @@ class NativeTagWrapper {
     ThrowIfStatusNotOk(result);
   }
 
-  int GetNativeValueAndThrowOnNegativeResult(Function<int>(int, int) nativeMethod, int offset) {
+  int GetNativeValueAndThrowOnNegativeResult(int Function(int, int) nativeMethod, int offset) {
     ThrowIfAlreadyDisposed();
     var result = nativeMethod(nativeTagHandle, offset);
     if (result < 0) throw new LibPlcTagException(Status.fromInt(result));
@@ -565,7 +562,7 @@ class NativeTagWrapper {
       Function(int, int) nativeMethod, int offset, T valueIndicatingPossibleError) {
     ThrowIfAlreadyDisposed();
     var result = nativeMethod(nativeTagHandle, offset);
-    if (result.Equals(valueIndicatingPossibleError)) ThrowIfStatusNotOk();
+    if (result == valueIndicatingPossibleError) ThrowIfStatusNotOk();
     return result;
   }
 
@@ -619,7 +616,7 @@ class NativeTagWrapper {
     for (var key in attributes.keys) {
       var attr = attributes[key];
       if (attr != null) {
-        attributeStrings.add("{attr.Key}={attr.Value}");
+        attributeStrings.add("$key=$attr");
       }
     }
     return attributeStrings.join(separator);

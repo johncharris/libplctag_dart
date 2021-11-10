@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ffi';
 import "package:ffi/ffi.dart";
 import 'package:libplctag_dart/native/extensions.dart';
 
 import 'package:libplctag_dart/native/generated_bindings.dart';
 import 'package:libplctag_dart/native/library_extractor.dart';
+import 'package:libplctag_dart/native/status_codes.dart';
 
 /// <summary>
 /// This class provides low-level (raw) access to the native libplctag library (which is written in C).
@@ -264,10 +267,21 @@ class plctag {
     NativeMethods.plc_tag_set_debug_level(debug_level);
   }
 
-  // static int plc_tag_get_string(int tag_id, int string_start_offset, StringBuilder buffer, int buffer_length) {
-  //   _extractLibraryIfRequired();
-  //   return NativeMethods.plc_tag_get_string(tag_id, string_start_offset, buffer, buffer_length);
-  // }
+  static int plc_tag_get_string(int tag_id, int string_start_offset, StringBuffer buffer, int buffer_length) {
+    _extractLibraryIfRequired();
+
+    var ptr = malloc.allocate<Int8>(buffer_length);
+
+    var result = NativeMethods.plc_tag_get_string(tag_id, string_start_offset, ptr, buffer_length);
+
+    if (result == STATUS_CODES.PLCTAG_STATUS_OK.value) {
+      for (int i = 0; i < buffer_length; i++) {
+        buffer.write(ascii.decode([ptr.elementAt(i).value]));
+      }
+    }
+
+    return result;
+  }
 
   static int plc_tag_set_string(int tag_id, int string_start_offset, String string_val) {
     _extractLibraryIfRequired();

@@ -70,7 +70,7 @@ class Tag {
   /// Determines the type of the PLC Protocol.
   /// </summary>
   String? get protocol => _tag.protocol;
-  set protocol(value) => _tag.protocol = value;
+  set protocol(value) => _tag.protocol = value.toString().replaceAll("Protocol.", "");
 
   /// <summary>
   /// Optional. Use this attribute to cause the tag read operations to cache data the requested number of milliseconds.
@@ -314,11 +314,11 @@ class Tag {
   int GetUInt64(int offset) => _tag.GetUInt64(offset);
   void SetUInt64(int offset, int value) => _tag.SetUInt64(offset, value);
 
-  // void SetString(int offset, String value)     => _tag.SetString(offset, value);
-  // int GetStringLength(int offset)              => _tag.GetStringLength(offset);
-  // int GetStringTotalLength(int offset)         => _tag.GetStringTotalLength(offset);
-  // int GetStringCapacity(int offset)            => _tag.GetStringCapacity(offset);
-  // string GetString(int offset)                 => _tag.GetString(offset);
+  void setString(int offset, String value) => _tag.SetString(offset, value);
+  int getStringLength(int offset) => _tag.GetStringLength(offset);
+  int getStringTotalLength(int offset) => _tag.GetStringTotalLength(offset);
+  int getStringCapacity(int offset) => _tag.GetStringCapacity(offset);
+  String getString(int offset) => _tag.GetString(offset);
 
   // event EventHandler<TagEventArgs> ReadStarted
   // {

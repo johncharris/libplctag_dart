@@ -46,7 +46,7 @@ abstract class INativeTag {
   int plc_tag_get_raw_bytes(int tag, int start_offset, Uint8List buffer, int buffer_length);
   int plc_tag_set_raw_bytes(int tag, int start_offset, Uint8List buffer, int buffer_length);
   int plc_tag_get_string_length(int tag, int String_start_offset);
-  // int plc_tag_get_string(int tag, int String_start_offset, StringBuilder buffer, int buffer_length);
+  int plc_tag_get_string(int tag, int String_start_offset, StringBuffer buffer, int buffer_length);
   int plc_tag_get_string_total_length(int tag, int String_start_offset);
   int plc_tag_get_string_capacity(int tag, int String_start_offset);
   int plc_tag_set_string(int tag, int String_start_offset, String String_val);
