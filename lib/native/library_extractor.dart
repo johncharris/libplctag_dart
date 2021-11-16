@@ -1,15 +1,17 @@
 import 'dart:ffi' as ffi;
 import 'dart:ffi';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, Directory;
 
 class LibraryExtractor {
   static DynamicLibrary getLibrary() {
     ffi.DynamicLibrary? dylib;
 
+    print(Directory.current.path + "/libplctag.so");
+
     if (Platform.isWindows) {
       dylib = ffi.DynamicLibrary.open("plctag.dll");
     } else {
-      dylib = ffi.DynamicLibrary.open("plctag.so");
+      dylib = ffi.DynamicLibrary.open(Directory.current.path + "/libplctag.so");
     }
     // if (Platform.isWindows) {
     //   dylib = ffi.DynamicLibrary.open("lib/libplctag/windows/x64/plctag.dll");
