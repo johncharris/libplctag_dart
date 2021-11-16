@@ -1,16 +1,31 @@
 import 'dart:ffi' as ffi;
 import 'dart:ffi';
-import 'dart:io' show Directory;
-import 'package:path/path.dart' as path;
+import 'dart:io' show Platform;
 
 class LibraryExtractor {
   static DynamicLibrary getLibrary() {
-    String libraryPath;
+    ffi.DynamicLibrary? dylib;
 
-    // if (Platform.isWindows)
-    libraryPath = path.join(Directory.current.path, 'runtime\\win_x64', 'plctag.dll');
+    if (Platform.isWindows) {
+      dylib = ffi.DynamicLibrary.open("plctag.dll");
+    } else {
+      dylib = ffi.DynamicLibrary.open("plctag.so");
+    }
+    // if (Platform.isWindows) {
+    //   dylib = ffi.DynamicLibrary.open("lib/libplctag/windows/x64/plctag.dll");
+    // }
 
-    final dylib = ffi.DynamicLibrary.open(libraryPath);
+    // if (Platform.isLinux) {
+    //   try {
+    //     dylib = ffi.DynamicLibrary.open("libplctag/linux/aarch64/libplctag.so");
+    //   } catch (ex) {
+    //     print(ex);
+    //     dylib = ffi.DynamicLibrary.open("libplctag/linux/x64/libplctag.so");
+    //   }
+    // }
+
+    // if (dylib == null) throw new Exception("Build Configuration not supported");
+
     return dylib;
   }
 }
