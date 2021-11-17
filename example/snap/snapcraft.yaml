@@ -1,5 +1,5 @@
 name: libplctag-dart-example # you probably want to 'snapcraft register <name>'
-base: core18 # the base snap is the execution environment for this snap
+base: core20 # the base snap is the execution environment for this snap
 version: '0.1' # just for humans, typically '1.2+git' or '1.3.2'
 summary: Example of the libplctag_dart library # 79 char long summary
 description: |
@@ -10,9 +10,31 @@ description: |
 
 grade: devel # must be 'stable' to release into candidate/stable channels
 confinement: devmode # use 'strict' once you have the right plugs and slots
+
 architectures:
- - build-on: amd64
+ - build-on: arm64
    run-on: arm64
+
+apps:
+  libplctag-dart-example:
+#    command-chain:
+#     - bin/wayland-launch
+    command: example
+    plugs:
+     - opengl
+     - wayland
+     - network
+
+  daemon:
+    daemon: simple
+    restart-condition: always
+    command-chain:
+    - bin/run-daemon
+    - bin/wayland-launch
+    command: "example --fullscreen"
+    plugs:
+    -  opengl
+    -  wayland
 
 parts:
   example:
@@ -22,7 +44,23 @@ parts:
        - "libegl1"
        - "libx11-6"
        - "libxkbcommon0"
+       - "libwayland-cursor0"
+       - "libwayland-egl1"
+       - "libstdc++6"
+       - inotify-tools
+  libplctag:
+    plugin: dump
+    source: ./elinux/libplctag
+  mir-kiosk-snap-launch:
+    plugin: dump
+    source: https://github.com/MirServer/mir-kiosk-snap-launch.git
+    override-build:  $SNAPCRAFT_PART_BUILD/build-with-plugs.sh opengl wayland
 
-apps:
-  libplctag-dart-example:
-    command: "example"
+   
+    
+environment:
+  LD_LIBRARY_PATH: ${SNAP}/usr/lib/:${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/
+  # Prep EGL
+  __EGL_VENDOR_LIBRARY_DIRS: $SNAP/etc/glvnd/egl_vendor.d:$SNAP/usr/share/glvnd/egl_vendor.d
+  LIBGL_DRIVERS_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri
+  LIBVA_DRIVERS_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri
