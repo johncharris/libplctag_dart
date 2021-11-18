@@ -14,6 +14,12 @@ confinement: devmode # use 'strict' once you have the right plugs and slots
 architectures:
  - build-on: arm64
    run-on: arm64
+   
+plugs:
+  graphics-core20:
+    interface: content
+    target: $SNAP/graphics
+    default-provider: mesa-core20
 
 apps:
   libplctag-dart-example:
@@ -21,8 +27,8 @@ apps:
 #     - bin/wayland-launch
     command: example
     plugs:
-     - opengl
      - wayland
+     - opengl
      - network
 
   daemon:
@@ -32,9 +38,6 @@ apps:
     - bin/run-daemon
     - bin/wayland-launch
     command: "example --fullscreen"
-    plugs:
-    -  opengl
-    -  wayland
 
 parts:
   example:
@@ -54,13 +57,22 @@ parts:
   mir-kiosk-snap-launch:
     plugin: dump
     source: https://github.com/MirServer/mir-kiosk-snap-launch.git
-    override-build:  $SNAPCRAFT_PART_BUILD/build-with-plugs.sh opengl wayland
-
+    override-build:  $SNAPCRAFT_PART_BUILD/build-with-plugs.sh opengl wayland graphics-core20
+    stage-packages:
+      - inotify-tools
    
     
 environment:
-  LD_LIBRARY_PATH: ${SNAP}/usr/lib/:${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/
-  # Prep EGL
-  __EGL_VENDOR_LIBRARY_DIRS: $SNAP/etc/glvnd/egl_vendor.d:$SNAP/usr/share/glvnd/egl_vendor.d
-  LIBGL_DRIVERS_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri
-  LIBVA_DRIVERS_PATH: ${SNAP}/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}/dri
+  # Graphics from graphics-core20
+  LD_LIBRARY_PATH:    $SNAP/graphics/lib
+  LIBGL_DRIVERS_PATH: $SNAP/graphics/dri
+  LIBVA_DRIVERS_PATH: $SNAP/graphics/dri
+  __EGL_VENDOR_LIBRARY_DIRS: $SNAP/graphics/glvnd/egl_vendor.d
+  # XKB config from snap
+  XKB_CONFIG_ROOT: $SNAP/usr/share/X11/xkb
+
+layout:
+  /usr/share/libdrm:  # Needed by mesa-core20 on AMD GPUs
+    bind: $SNAP/graphics/libdrm
+  /usr/share/drirc.d:  # Used by mesa-core20 for app specific workarounds
+    bind: $SNAP/graphics/drirc.d

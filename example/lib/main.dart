@@ -11,6 +11,7 @@ import 'package:libplctag_dart/data_types/sint_plc_mapper.dart';
 import 'package:libplctag_dart/data_types/real_plc_mapper.dart';
 import 'package:libplctag_dart/data_types/lint_plc_mapper.dart';
 import 'package:libplctag_dart/data_types/string_plc_mapper.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,8 +26,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+          primarySwatch: Colors.blue,
+          textTheme: GoogleFonts.mcLarenTextTheme(Theme.of(context).textTheme)),
       home: const MyHomePage(),
     );
   }
@@ -51,7 +52,8 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Flex(
         direction: Axis.vertical,
         children: [
-          ElevatedButton(onPressed: () => _getTags(), child: const Text("Get Tags")),
+          ElevatedButton(
+              onPressed: () => _getTags(), child: const Text("Get Tags")),
           Expanded(
             child: ListView.builder(
               itemBuilder: (_, index) => ListTile(
