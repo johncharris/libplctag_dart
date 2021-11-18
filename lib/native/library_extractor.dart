@@ -1,17 +1,21 @@
 import 'dart:ffi' as ffi;
 import 'dart:ffi';
 import 'dart:io' show Platform, Directory;
+import 'package:path/path.dart' as path;
 
 class LibraryExtractor {
   static DynamicLibrary getLibrary() {
     ffi.DynamicLibrary? dylib;
 
-    print(Directory.current.path + "/libplctag.so");
+    print(Platform.resolvedExecutable);
+    print(path.join(Platform.resolvedExecutable, "libplctag.so"));
 
     if (Platform.isWindows) {
       dylib = ffi.DynamicLibrary.open("plctag.dll");
     } else {
-      dylib = ffi.DynamicLibrary.open(Directory.current.path + "/libplctag.so");
+      var exePath = Platform.resolvedExecutable
+          .substring(0, Platform.resolvedExecutable.lastIndexOf("/"));
+      dylib = ffi.DynamicLibrary.open(path.join(exePath, "libplctag.so"));
     }
     // if (Platform.isWindows) {
     //   dylib = ffi.DynamicLibrary.open("lib/libplctag/windows/x64/plctag.dll");

@@ -11,7 +11,6 @@ import 'package:libplctag_dart/data_types/sint_plc_mapper.dart';
 import 'package:libplctag_dart/data_types/real_plc_mapper.dart';
 import 'package:libplctag_dart/data_types/lint_plc_mapper.dart';
 import 'package:libplctag_dart/data_types/string_plc_mapper.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,9 +24,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-          primarySwatch: Colors.blue,
-          textTheme: GoogleFonts.mcLarenTextTheme(Theme.of(context).textTheme)),
+      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: "McLaren"),
       home: const MyHomePage(),
     );
   }
@@ -48,6 +45,23 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Lib Plc Tag"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                        title: const Text("Test"),
+                        content: Container(
+                          width: 100,
+                          height: 200,
+                          color: Colors.green,
+                        ),
+                      ));
+            },
+          )
+        ],
       ),
       body: Flex(
         direction: Axis.vertical,
@@ -69,21 +83,30 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   _getTags() async {
-    var tag = Tag(TagInfoPlcMapper())
-      ..gateway = "192.168.39.170"
-      ..path = "1,0"
-      ..plcType = PlcType.ControlLogix
-      ..protocol = Protocol.AllenBradleyEIP
-      ..name = "@tags"
-      ..timeout = const Duration(seconds: 10);
+    try {
+      var tag = Tag(TagInfoPlcMapper())
+        ..gateway = "192.168.39.170"
+        ..path = "1,0"
+        ..plcType = PlcType.ControlLogix
+        ..protocol = Protocol.AllenBradleyEIP
+        ..name = "@tags"
+        ..timeout = const Duration(seconds: 10);
 
-    tag.Read();
+      tag.Read();
 
-    if (tag.Value != null) {
-      setState(() {
-        tags = tag.Value!;
-        tags.sort((a, b) => a.name.compareTo(b.name));
-      });
+      if (tag.Value != null) {
+        setState(() {
+          tags = tag.Value!;
+          tags.sort((a, b) => a.name.compareTo(b.name));
+        });
+      }
+    } catch (ex) {
+      showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+                title: const Text("Error"),
+                content: Text(ex.toString()),
+              ));
     }
   }
 

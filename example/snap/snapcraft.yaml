@@ -25,7 +25,7 @@ apps:
   libplctag-dart-example:
 #    command-chain:
 #     - bin/wayland-launch
-    command: example
+    command: "example --fullscreen"
     plugs:
      - wayland
      - opengl
