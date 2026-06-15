@@ -9,9 +9,10 @@ class NativeTag implements NativeTagBase {
   int plc_tag_create(String lpString, int timeout) => plctag.plc_tag_create(lpString, timeout);
   int plc_tag_destroy(int tag) => plctag.plc_tag_destroy(tag);
   void plc_tag_shutdown() => plctag.plc_tag_shutdown();
-  //  int plc_tag_register_callback(int tag_id, callback_func func)                  => plctag.plc_tag_register_callback(tag_id, func);
+  int plc_tag_register_callback(int tag_id, TagCallback callback) =>
+      plctag.plc_tag_register_callback(tag_id, callback);
   int plc_tag_unregister_callback(int tag_id) => plctag.plc_tag_unregister_callback(tag_id);
-  //  int plc_tag_register_logger(log_callback_func func)                              => plctag.plc_tag_register_logger(func);
+  int plc_tag_register_logger(LogCallback callback) => plctag.plc_tag_register_logger(callback);
   int plc_tag_unregister_logger() => plctag.plc_tag_unregister_logger();
   int plc_tag_lock(int tag) => plctag.plc_tag_lock(tag);
   int plc_tag_unlock(int tag) => plctag.plc_tag_unlock(tag);

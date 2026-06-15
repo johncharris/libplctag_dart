@@ -3,7 +3,7 @@ import 'package:libplctag_dart/tag.dart';
 
 class LintPlcMapper extends PlcMapperBase<int> {
   @override
-  int decodeAtOffset(Tag tag, int offset) => tag.getInt32(offset);
+  int decodeAtOffset(Tag tag, int offset) => tag.getInt64(offset);
 
   @override
   int? get elementSize => 8;

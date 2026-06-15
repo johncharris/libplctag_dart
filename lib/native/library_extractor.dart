@@ -1,37 +1,73 @@
 import 'dart:ffi' as ffi;
-import 'dart:ffi';
-import 'dart:io' show Platform, Directory;
+import 'dart:io' show File, Platform;
 import 'package:path/path.dart' as path;
 
+/// Locates the platform-specific libplctag binary and opens it.
+///
+/// Search order:
+///   1. The directory containing the running executable (works for
+///      `dart compile exe` output and Flutter desktop bundles).
+///   2. The bundled `lib/libplctag/<platform>/<arch>/` path inside this
+///      package (works for `dart test` / `dart run` invocations from source).
+///   3. The system loader's default search path (lets users override with
+///      `LD_LIBRARY_PATH`, the system package manager, or a symlink).
 class LibraryExtractor {
-  static DynamicLibrary getLibrary() {
-    ffi.DynamicLibrary? dylib;
-
-    print(Platform.resolvedExecutable);
-    print(path.join(Platform.resolvedExecutable, "libplctag.so"));
-
-    if (Platform.isWindows) {
-      dylib = ffi.DynamicLibrary.open("plctag.dll");
-    } else {
-      var exePath = Platform.resolvedExecutable
-          .substring(0, Platform.resolvedExecutable.lastIndexOf("/"));
-      dylib = ffi.DynamicLibrary.open(path.join(exePath, "libplctag.so"));
+  static ffi.DynamicLibrary getLibrary() {
+    final candidates = _candidateLibraryPaths();
+    Object? lastError;
+    for (final candidate in candidates) {
+      try {
+        return ffi.DynamicLibrary.open(candidate);
+      } catch (e) {
+        lastError = e;
+      }
     }
-    // if (Platform.isWindows) {
-    //   dylib = ffi.DynamicLibrary.open("lib/libplctag/windows/x64/plctag.dll");
-    // }
+    throw Exception(
+        'Could not locate libplctag. Tried: ${candidates.join(", ")}. Last error: $lastError');
+  }
 
-    // if (Platform.isLinux) {
-    //   try {
-    //     dylib = ffi.DynamicLibrary.open("libplctag/linux/aarch64/libplctag.so");
-    //   } catch (ex) {
-    //     print(ex);
-    //     dylib = ffi.DynamicLibrary.open("libplctag/linux/x64/libplctag.so");
-    //   }
-    // }
+  static List<String> _candidateLibraryPaths() {
+    final libraryFileName = Platform.isWindows ? 'plctag.dll' : 'libplctag.so';
+    final result = <String>[];
 
-    // if (dylib == null) throw new Exception("Build Configuration not supported");
+    final execDir = path.dirname(Platform.resolvedExecutable);
+    result.add(path.join(execDir, libraryFileName));
 
-    return dylib;
+    final bundled = _bundledLibraryPath();
+    if (bundled != null) result.add(bundled);
+
+    result.add(libraryFileName);
+    return result;
+  }
+
+  static String? _bundledLibraryPath() {
+    final String archDir;
+    final String libName;
+    if (Platform.isWindows) {
+      archDir = 'windows/x64';
+      libName = 'plctag.dll';
+    } else if (Platform.isLinux) {
+      archDir = _looksLikeArm64() ? 'linux/aarch64' : 'linux/x64';
+      libName = 'libplctag.so';
+    } else {
+      return null;
+    }
+
+    var dir = path.dirname(Platform.script.toFilePath());
+    for (var depth = 0; depth < 6; depth++) {
+      final candidate = path.join(dir, 'lib', 'libplctag', archDir, libName);
+      if (File(candidate).existsSync()) return candidate;
+      final parent = path.dirname(dir);
+      if (parent == dir) break;
+      dir = parent;
+    }
+    return null;
+  }
+
+  static bool _looksLikeArm64() {
+    final hostType = Platform.environment['HOSTTYPE'] ?? '';
+    if (hostType.contains('aarch64') || hostType.contains('arm64')) return true;
+    final version = Platform.version.toLowerCase();
+    return version.contains('arm64') || version.contains('aarch64');
   }
 }

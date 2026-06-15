@@ -1,7 +1,9 @@
 import 'package:libplctag_dart/data_types/iplc_mapper.dart';
 import 'package:libplctag_dart/debug_level.dart';
+import 'package:libplctag_dart/native/plctag.dart' show TagCallback, LogCallback;
 import 'package:libplctag_dart/plc_type.dart';
 import 'package:libplctag_dart/status.dart';
+import 'package:libplctag_dart/tag_event.dart';
 import 'tag.dart' as nt;
 
 /// <summary>
@@ -139,13 +141,47 @@ class Tag<T> {
 
   /// <inheritdoc cref="Tag.Initialize"/>
   void initialize() {
+    final mapperCount = _plcMapper.getElementCount();
+    if (mapperCount != null) _tag.ElementCount = mapperCount;
     _tag.Initialize();
     decodeAll();
   }
 
+  /// Register a Dart callback to receive native events for this tag.
+  void registerCallback(TagCallback callback) => _tag.registerCallback(callback);
+
+  /// Unregister the previously-registered tag callback.
+  void unregisterCallback() => _tag.unregisterCallback();
+
+  /// Read a runtime integer attribute. Tag must be initialized.
+  int getIntAttribute(String attributeName) => _tag.getIntAttribute(attributeName);
+
+  /// Write a runtime integer attribute. Tag must be initialized.
+  void setIntAttribute(String attributeName, int value) => _tag.setIntAttribute(attributeName, value);
+
+  /// Shut down the native library. See [nt.Tag.shutdownLibrary].
+  static void shutdownLibrary() => nt.Tag.shutdownLibrary();
+
+  /// Check the native library version. See [nt.Tag.checkLibraryVersion].
+  static int checkLibraryVersion(int major, int minor, int patch) =>
+      nt.Tag.checkLibraryVersion(major, minor, patch);
+
+  /// Register a global log callback. See [nt.Tag.registerLogger].
+  static void registerLogger(LogCallback callback) => nt.Tag.registerLogger(callback);
+
+  /// Unregister the global log callback. See [nt.Tag.unregisterLogger].
+  static void unregisterLogger() => nt.Tag.unregisterLogger();
+
   /// <inheritdoc cref="Tag.Read"/>
   void Read() {
     _tag.read();
+    decodeAll();
+  }
+
+  /// Initiate a non-blocking read; the returned future completes once the
+  /// read finishes (or the configured timeout elapses) and Value is decoded.
+  Future<void> ReadAsync() async {
+    await _tag.readAsync();
     decodeAll();
   }
 
@@ -154,6 +190,16 @@ class Tag<T> {
     EncodeAll();
     _tag.write();
   }
+
+  /// Initiate a non-blocking write; the returned future completes once the
+  /// write finishes (or the configured timeout elapses).
+  Future<void> WriteAsync() async {
+    EncodeAll();
+    await _tag.writeAsync();
+  }
+
+  /// Typed event stream for this tag. See [nt.Tag.events].
+  Stream<TagEvent> get events => _tag.events;
 
   void decodeAll() {
     Value = _plcMapper.decode(_tag);

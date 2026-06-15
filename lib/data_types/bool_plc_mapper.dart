@@ -3,36 +3,57 @@ import 'package:libplctag_dart/tag.dart';
 
 import 'iplc_mapper.dart';
 
-class BoolPlcMapper extends IPlcMapper<bool> //, IPlcMapper<bool[]>, IPlcMapper<bool[,]>, IPlcMapper<bool[,,]>
-{
+class BoolPlcMapper extends IPlcMapper<bool> {
   int? get elementSize => 1;
 
   int? getElementCount() {
     if (arrayDimensions == null) return null;
 
-    //TODO: Test -> I'm not confident that the overall bool count is packed as a 1D array and not packed by dimension.
-    //Multiply dimensions for total elements
+    // BOOL arrays are packed as 32-bit words in ControlLogix; round up.
     double totalElements = arrayDimensions!.fold<int>(1, (x, y) => x * y).toDouble();
     return (totalElements / 32.0).ceil();
   }
 
-  int? SetArrayLength(int? elementCount) => (elementCount!.toDouble() / 32.0).ceil();
-
   List<bool> decodeArray(Tag tag) {
     if (elementSize == null) throw new Exception("ElementSize cannot be null for array decoding");
 
-    List<bool> buffer = List.filled(tag.ElementCount! * 32, false);
-
-    for (int ii = 0; ii < tag.ElementCount! * 32; ii++) {
+    final bitCount = tag.ElementCount! * 32;
+    final buffer = List.filled(bitCount, false);
+    for (var ii = 0; ii < bitCount; ii++) {
       buffer[ii] = tag.getBit(ii);
     }
     return buffer;
   }
 
   void encodeArray(Tag tag, List<bool> values) {
-    for (int ii = 0; ii < tag.ElementCount! * 32; ii++) {
+    final bitCount = tag.ElementCount! * 32;
+    for (var ii = 0; ii < bitCount && ii < values.length; ii++) {
       tag.setBit(ii, values[ii]);
     }
+  }
+
+  List<List<bool>> decodeArray2D(Tag tag) {
+    final dims = _requireDims(2);
+    return _reshape2D(decodeArray(tag), dims[0], dims[1]);
+  }
+
+  void encodeArray2D(Tag tag, List<List<bool>> values) {
+    final flat = <bool>[];
+    for (final row in values) flat.addAll(row);
+    encodeArray(tag, flat);
+  }
+
+  List<List<List<bool>>> decodeArray3D(Tag tag) {
+    final dims = _requireDims(3);
+    return _reshape3D(decodeArray(tag), dims[0], dims[1], dims[2]);
+  }
+
+  void encodeArray3D(Tag tag, List<List<List<bool>>> values) {
+    final flat = <bool>[];
+    for (final plane in values) {
+      for (final row in plane) flat.addAll(row);
+    }
+    encodeArray(tag, flat);
   }
 
   bool decode(Tag tag) => tag.plcType == PlcType.Omron ? tag.getUInt8(0) != 0 : tag.getUInt8(0) == 255;
@@ -47,16 +68,34 @@ class BoolPlcMapper extends IPlcMapper<bool> //, IPlcMapper<bool[]>, IPlcMapper<
   PlcType get plcType => _plcType;
   set plcType(value) => _plcType = value;
 
-  // bool[] IPlcMapper<bool[]>.Decode(Tag tag) => DecodeArray(tag);
+  List<int> _requireDims(int rank) {
+    final dims = arrayDimensions;
+    if (dims == null || dims.length != rank) {
+      throw new Exception("arrayDimensions must have rank $rank for this operation");
+    }
+    return dims;
+  }
 
-  // void IPlcMapper<bool[]>.Encode(Tag tag, bool[] value) => EncodeArray(tag, value);
+  List<List<bool>> _reshape2D(List<bool> flat, int rows, int cols) {
+    final out = <List<bool>>[];
+    for (var r = 0; r < rows; r++) {
+      out.add(flat.sublist(r * cols, (r + 1) * cols));
+    }
+    return out;
+  }
 
-  // bool[,] IPlcMapper<bool[,]>.Decode(Tag tag) => DecodeArray(tag).To2DArray(ArrayDimensions[0], ArrayDimensions[1]);
-
-  // void IPlcMapper<bool[,]>.Encode(Tag tag, bool[,] value) => EncodeArray(tag, value.To1DArray());
-
-  // bool[,,] IPlcMapper<bool[,,]>.Decode(Tag tag) => DecodeArray(tag).To3DArray(ArrayDimensions[0], ArrayDimensions[1], ArrayDimensions[2]);
-
-  // void IPlcMapper<bool[,,]>.Encode(Tag tag, bool[,,] value) => EncodeArray(tag, value.To1DArray());
-
+  List<List<List<bool>>> _reshape3D(List<bool> flat, int planes, int rows, int cols) {
+    final out = <List<List<bool>>>[];
+    final planeSize = rows * cols;
+    for (var p = 0; p < planes; p++) {
+      final planeStart = p * planeSize;
+      final plane = <List<bool>>[];
+      for (var r = 0; r < rows; r++) {
+        final rowStart = planeStart + r * cols;
+        plane.add(flat.sublist(rowStart, rowStart + cols));
+      }
+      out.add(plane);
+    }
+    return out;
+  }
 }

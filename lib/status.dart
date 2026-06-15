@@ -67,7 +67,7 @@ class Status {
   static const ErrorBadConfig = const Status._internal(-2, "Bad Config");
 
   /// <inheritdoc cref="STATUS_CODES.PLCTAG_ERR_BAD_CONNECTION"/>
-  static const ErrorBadConnection = const Status._internal(-3, " Bad Connection");
+  static const ErrorBadConnection = const Status._internal(-3, "Bad Connection");
 
   /// <inheritdoc cref="STATUS_CODES.PLCTAG_ERR_BAD_DATA"/>
   static const ErrorBadData = const Status._internal(-4, "Bad Data");

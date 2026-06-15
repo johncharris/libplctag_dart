@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:libplctag_dart/data_types/iplc_mapper.dart';
 import 'package:libplctag_dart/data_types/tag_info.dart';

@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:libplctag_dart/native/plctag.dart';
+
 abstract class NativeTagBase {
   int plc_tag_abort(int tag);
   int plc_tag_check_lib_version(int req_major, int req_minor, int req_patch);
@@ -22,8 +24,8 @@ abstract class NativeTagBase {
   int plc_tag_get_uint8(int tag, int offset);
   int plc_tag_lock(int tag);
   int plc_tag_read(int tag, int timeout);
-  // int plc_tag_register_callback(int tag_id, plctag.callback_func func);
-  // int plc_tag_register_logger(plctag.log_callback_func func);
+  int plc_tag_register_callback(int tag_id, TagCallback callback);
+  int plc_tag_register_logger(LogCallback callback);
   int plc_tag_set_bit(int tag, int offset_bit, int val);
   void plc_tag_set_debug_level(int debug_level);
   int plc_tag_set_float32(int tag, int offset, double val);

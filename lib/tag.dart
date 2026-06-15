@@ -1,13 +1,12 @@
+import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:libplctag_dart/debug_level.dart';
 import 'package:libplctag_dart/libplctag_dart.dart';
-import 'package:libplctag_dart/native_tag.dart';
-import 'package:libplctag_dart/plc_type.dart';
-import 'package:libplctag_dart/status.dart';
+import 'package:libplctag_dart/native/plctag.dart' show TagCallback, LogCallback;
 
 class Tag {
   final NativeTagWrapper _tag = new NativeTagWrapper(new NativeTag());
+  StreamController<TagEvent>? _eventController;
 
   // /// <summary>
   // /// True if <see cref="Initialize"/> or <see cref="InitializeAsync"/> has been called.
@@ -224,6 +223,9 @@ class Tag {
   /// </remarks>
   void read() => _tag.read();
 
+  /// Initiates a non-blocking read and completes when the read finishes (or [Timeout] elapses).
+  Future<void> readAsync() => _tag.readAsync();
+
   /// <summary>
   /// Executes a synchronous write on a tag.
   /// Timeout is controlled via class property.
@@ -234,8 +236,16 @@ class Tag {
   /// </remarks>
   void write() => _tag.write();
 
+  /// Initiates a non-blocking write and completes when the write finishes (or [Timeout] elapses).
+  Future<void> writeAsync() => _tag.writeAsync();
+
   void abort() => _tag.abort();
-  void dispose() => _tag.dispose();
+
+  void dispose() {
+    _eventController?.close();
+    _eventController = null;
+    _tag.dispose();
+  }
 
   /// <summary>
   /// This function retrieves a segment of raw, unprocessed bytes from the tag buffer.
@@ -289,4 +299,55 @@ class Tag {
   int getStringTotalLength(int offset) => _tag.getStringTotalLength(offset);
   int getStringCapacity(int offset) => _tag.getStringCapacity(offset);
   String getString(int offset) => _tag.getString(offset);
+
+  /// Read a runtime integer attribute. Tag must be initialized.
+  int getIntAttribute(String attributeName) => _tag.getIntAttribute(attributeName);
+
+  /// Write a runtime integer attribute. Tag must be initialized.
+  void setIntAttribute(String attributeName, int value) => _tag.setIntAttribute(attributeName, value);
+
+  /// Register a Dart callback to receive native events for this tag
+  /// (e.g. read started/completed, write started/completed, abort, destroy).
+  void registerCallback(TagCallback callback) => _tag.registerCallback(callback);
+
+  /// Unregister the previously-registered callback for this tag.
+  void unregisterCallback() => _tag.unregisterCallback();
+
+  /// Stream of typed tag events. Lazily registers a native callback on first
+  /// listen and unregisters on cancel. Only one listener at a time.
+  Stream<TagEvent> get events {
+    final existing = _eventController;
+    if (existing != null) return existing.stream;
+
+    final controller = StreamController<TagEvent>.broadcast(
+      onListen: () {
+        _tag.registerCallback((tagId, eventId, status) {
+          final evt = TagEvent.fromRaw(tagId, eventId, status);
+          if (evt != null) _eventController?.add(evt);
+        });
+      },
+      onCancel: () {
+        try {
+          _tag.unregisterCallback();
+        } catch (_) {}
+      },
+    );
+    _eventController = controller;
+    return controller.stream;
+  }
+
+  /// Shut down the native library, releasing all internal resources.
+  /// Call only when no tags are in use; new tags can still be created after.
+  static void shutdownLibrary() => NativeTagWrapper.shutdownLibrary();
+
+  /// Check that the linked native library is at least the given version.
+  /// Returns a [Status.value]; [Status.Ok] (0) means the version is sufficient.
+  static int checkLibraryVersion(int major, int minor, int patch) =>
+      NativeTagWrapper.checkLibraryVersion(major, minor, patch);
+
+  /// Register a global log callback for the native library.
+  static void registerLogger(LogCallback callback) => NativeTagWrapper.registerLogger(callback);
+
+  /// Unregister the global log callback.
+  static void unregisterLogger() => NativeTagWrapper.unregisterLogger();
 }

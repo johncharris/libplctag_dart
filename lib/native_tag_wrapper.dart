@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:libplctag_dart/debug_level.dart';
+import 'package:libplctag_dart/native/plctag.dart';
+import 'package:libplctag_dart/native_tag.dart';
 import 'package:libplctag_dart/native_tag_base.dart';
 import 'package:libplctag_dart/libplctag_exception.dart';
 import 'package:libplctag_dart/plc_type.dart';
@@ -299,6 +301,49 @@ class NativeTagWrapper {
     throwIfStatusNotOk(result);
   }
 
+  /// Initiates a non-blocking read, then polls status until completion or timeout.
+  Future<void> readAsync() async {
+    throwIfAlreadyDisposed();
+    initializeIfRequired();
+
+    final initial = Status.fromInt(_native.plc_tag_read(nativeTagHandle, TIMEOUT_VALUE_THAT_INDICATES_ASYNC_OPERATION));
+    if (initial == Status.Ok) return;
+    if (initial != Status.Pending) throw new LibPlcTagException(initial);
+
+    await _awaitPending();
+  }
+
+  /// Initiates a non-blocking write, then polls status until completion or timeout.
+  Future<void> writeAsync() async {
+    throwIfAlreadyDisposed();
+    initializeIfRequired();
+
+    final initial = Status.fromInt(_native.plc_tag_write(nativeTagHandle, TIMEOUT_VALUE_THAT_INDICATES_ASYNC_OPERATION));
+    if (initial == Status.Ok) return;
+    if (initial != Status.Pending) throw new LibPlcTagException(initial);
+
+    await _awaitPending();
+  }
+
+  Future<void> _awaitPending() async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      if (_isDisposed) throw new LibPlcTagException(Status.ErrorAbort);
+
+      final status = Status.fromInt(_native.plc_tag_status(nativeTagHandle));
+      if (status == Status.Ok) return;
+      if (status != Status.Pending) throw new LibPlcTagException(status);
+
+      if (DateTime.now().isAfter(deadline)) {
+        // Best-effort abort then surface a timeout error.
+        _native.plc_tag_abort(nativeTagHandle);
+        throw new LibPlcTagException(Status.ErrorTimeout);
+      }
+
+      await Future.delayed(Duration(milliseconds: ASYNC_STATUS_POLL_INTERVAL));
+    }
+  }
+
   int getSize() {
     throwIfAlreadyDisposed();
 
@@ -347,6 +392,40 @@ class NativeTagWrapper {
     var result = Status.fromInt(_native.plc_tag_set_int_attribute(nativeTagHandle, attributeName, value));
     throwIfStatusNotOk(result);
   }
+
+  void registerCallback(TagCallback callback) {
+    throwIfAlreadyDisposed();
+    var result = Status.fromInt(_native.plc_tag_register_callback(nativeTagHandle, callback));
+    throwIfStatusNotOk(result);
+  }
+
+  void unregisterCallback() {
+    throwIfAlreadyDisposed();
+    var result = Status.fromInt(_native.plc_tag_unregister_callback(nativeTagHandle));
+    throwIfStatusNotOk(result);
+  }
+
+  static void shutdownLibrary([NativeTagBase? native]) {
+    (native ?? _defaultNative).plc_tag_shutdown();
+  }
+
+  static int checkLibraryVersion(int requiredMajor, int requiredMinor, int requiredPatch,
+      [NativeTagBase? native]) {
+    return (native ?? _defaultNative).plc_tag_check_lib_version(requiredMajor, requiredMinor, requiredPatch);
+  }
+
+  static void registerLogger(LogCallback callback, [NativeTagBase? native]) {
+    var result = Status.fromInt((native ?? _defaultNative).plc_tag_register_logger(callback));
+    if (result != Status.Ok) throw new LibPlcTagException(result);
+  }
+
+  static void unregisterLogger([NativeTagBase? native]) {
+    var result = Status.fromInt((native ?? _defaultNative).plc_tag_unregister_logger());
+    if (result != Status.Ok) throw new LibPlcTagException(result);
+  }
+
+  static NativeTagBase get _defaultNative => _defaultNativeInstance;
+  static final NativeTagBase _defaultNativeInstance = NativeTag();
 
   bool getBit(int offset) {
     throwIfAlreadyDisposed();
@@ -497,7 +576,7 @@ class NativeTagWrapper {
       "str_is_byte_swapped": formatNullableBoolean(stringIsByteSwapped),
       "str_is_counted": formatNullableBoolean(stringIsCounted),
       "str_is_fixed_length": formatNullableBoolean(stringIsFixedLength),
-      "str_is_zero_terminated": formatNullableBoolean(stringIsFixedLength),
+      "str_is_zero_terminated": formatNullableBoolean(stringIsZeroTerminated),
       "str_max_capacity": stringMaxCapacity?.toString(),
       "str_pad_bytes": stringPadBytes?.toString(),
       "str_total_length": stringTotalLength?.toString(),
