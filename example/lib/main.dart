@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:libplctag_dart/data_types/iplc_mapper.dart';
+import 'package:libplctag_dart/data_types/plc_mapper.dart';
 import 'package:libplctag_dart/data_types/tag_info.dart';
 import 'package:libplctag_dart/data_types/tag_info_plc_mapper.dart';
 import 'package:libplctag_dart/plc_type.dart';
@@ -87,16 +87,16 @@ class _MyHomePageState extends State<MyHomePage> {
       var tag = Tag(TagInfoPlcMapper())
         ..gateway = "192.168.39.170"
         ..path = "1,0"
-        ..plcType = PlcType.ControlLogix
-        ..protocol = Protocol.AllenBradleyEIP
+        ..plcType = PlcType.controlLogix
+        ..protocol = Protocol.abEip
         ..name = "@tags"
         ..timeout = const Duration(seconds: 10);
 
-      tag.Read();
+      tag.read();
 
-      if (tag.Value != null) {
+      if (tag.value != null) {
         setState(() {
-          tags = tag.Value!;
+          tags = tag.value!;
           tags.sort((a, b) => a.name.compareTo(b.name));
         });
       }
@@ -111,37 +111,32 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   String _getValue(TagInfo tagInfo) {
-    IPlcMapper? mapper;
+    PlcMapper? mapper;
     if (tagInfo.type == 0xC1) {
       mapper = BoolPlcMapper();
-      // else if (tagInfo.type == 0xD3) mapper = DwordPlcMapper();
     } else if (tagInfo.type == 0xC2) {
       mapper = SintPlcMapper();
     } else if (tagInfo.type == 0xC3) {
       mapper = IntPlcMapper();
-    } else if (tagInfo.type == 0xCA) {
-      mapper = RealPlcMapper();
     } else if (tagInfo.type == 0xC4) {
       mapper = LintPlcMapper();
+    } else if (tagInfo.type == 0xCA) {
+      mapper = RealPlcMapper();
     } else if (tagInfo.type == 36814) {
       mapper = StringPlcMapper();
     }
 
-    if (mapper != null) {
-      var tag = Tag(mapper)
-        ..gateway = "192.168.39.170"
-        ..path = "1,0"
-        ..plcType = PlcType.ControlLogix
-        ..protocol = Protocol.AllenBradleyEIP
-        ..name = tagInfo.name
-        ..timeout = const Duration(seconds: 10);
+    if (mapper == null) return "";
 
-      tag.Read();
-      return tag.Value.toString();
-    } else {
-      print(tagInfo);
-    }
+    final tag = Tag(mapper)
+      ..gateway = "192.168.39.170"
+      ..path = "1,0"
+      ..plcType = PlcType.controlLogix
+      ..protocol = Protocol.abEip
+      ..name = tagInfo.name
+      ..timeout = const Duration(seconds: 10);
 
-    return "";
+    tag.read();
+    return tag.value.toString();
   }
 }

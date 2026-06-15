@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:libplctag_dart/native/plctag.dart';
 import 'package:libplctag_dart/native_tag_base.dart';
-import 'package:libplctag_dart/native/status_codes.dart';
+import 'package:libplctag_dart/status.dart';
 
 /// In-memory implementation of [NativeTagBase] suitable for testing.
 ///
@@ -52,7 +52,7 @@ class MockNativeTag implements NativeTagBase {
   int plc_tag_destroy(int tag) {
     tags.remove(tag);
     callbacks.remove(tag);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -64,36 +64,36 @@ class MockNativeTag implements NativeTagBase {
 
   @override
   int plc_tag_check_lib_version(int req_major, int req_minor, int req_patch) =>
-      STATUS_CODES.PLCTAG_STATUS_OK.value;
+      Status.ok.value;
 
   @override
-  int plc_tag_abort(int tag) => STATUS_CODES.PLCTAG_STATUS_OK.value;
+  int plc_tag_abort(int tag) => Status.ok.value;
 
   @override
-  int plc_tag_lock(int tag) => STATUS_CODES.PLCTAG_STATUS_OK.value;
+  int plc_tag_lock(int tag) => Status.ok.value;
 
   @override
-  int plc_tag_unlock(int tag) => STATUS_CODES.PLCTAG_STATUS_OK.value;
+  int plc_tag_unlock(int tag) => Status.ok.value;
 
   @override
   int plc_tag_read(int tag, int timeout) {
     final override = statusOverride;
     if (override != null) return override.code;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_write(int tag, int timeout) {
     final override = statusOverride;
     if (override != null) return override.code;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_status(int tag) {
     final override = statusOverride;
     if (override != null) return override.code;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -105,9 +105,9 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_size(int tag, int new_size) {
     final t = tags[tag];
-    if (t == null) return STATUS_CODES.PLCTAG_ERR_NOT_FOUND.value;
+    if (t == null) return Status.errorNotFound.value;
     t.resize(new_size);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -118,31 +118,31 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_int_attribute(int tag, String attrib_name, int new_value) {
     tags[tag]?.attributes[attrib_name] = new_value;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_register_callback(int tag_id, TagCallback callback) {
     callbacks[tag_id] = callback;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_unregister_callback(int tag_id) {
     callbacks.remove(tag_id);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_register_logger(LogCallback callback) {
     logger = callback;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_unregister_logger() {
     logger = null;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -160,7 +160,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_bit(int tag, int offset_bit, int val) {
     final t = tags[tag];
-    if (t == null) return STATUS_CODES.PLCTAG_ERR_NOT_FOUND.value;
+    if (t == null) return Status.errorNotFound.value;
     final byteOffset = offset_bit ~/ 8;
     final bitOffset = offset_bit % 8;
     if (val != 0) {
@@ -168,7 +168,7 @@ class MockNativeTag implements NativeTagBase {
     } else {
       t.bytes[byteOffset] &= ~(1 << bitOffset);
     }
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -176,7 +176,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_int8(int tag, int offset, int val) {
     tags[tag]!.view.setInt8(offset, val);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -184,7 +184,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_uint8(int tag, int offset, int val) {
     tags[tag]!.view.setUint8(offset, val);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -192,7 +192,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_int16(int tag, int offset, int val) {
     tags[tag]!.view.setInt16(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -200,7 +200,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_uint16(int tag, int offset, int val) {
     tags[tag]!.view.setUint16(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -208,7 +208,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_int32(int tag, int offset, int val) {
     tags[tag]!.view.setInt32(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -216,7 +216,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_uint32(int tag, int offset, int val) {
     tags[tag]!.view.setUint32(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -224,7 +224,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_int64(int tag, int offset, int val) {
     tags[tag]!.view.setInt64(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -232,7 +232,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_uint64(int tag, int offset, int val) {
     tags[tag]!.view.setUint64(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -240,7 +240,7 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_float32(int tag, int offset, double val) {
     tags[tag]!.view.setFloat32(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -248,27 +248,27 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_set_float64(int tag, int offset, double val) {
     tags[tag]!.view.setFloat64(offset, val, Endian.little);
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_get_raw_bytes(int tag, int start_offset, Uint8List buffer, int buffer_length) {
     final t = tags[tag];
-    if (t == null) return STATUS_CODES.PLCTAG_ERR_NOT_FOUND.value;
+    if (t == null) return Status.errorNotFound.value;
     for (var i = 0; i < buffer_length; i++) {
       buffer[i] = t.bytes[start_offset + i];
     }
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_set_raw_bytes(int tag, int start_offset, Uint8List buffer, int buffer_length) {
     final t = tags[tag];
-    if (t == null) return STATUS_CODES.PLCTAG_ERR_NOT_FOUND.value;
+    if (t == null) return Status.errorNotFound.value;
     for (var i = 0; i < buffer_length; i++) {
       t.bytes[start_offset + i] = buffer[i];
     }
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
@@ -288,23 +288,23 @@ class MockNativeTag implements NativeTagBase {
   @override
   int plc_tag_get_string(int tag, int offset, StringBuffer buffer, int buffer_length) {
     final t = tags[tag];
-    if (t == null) return STATUS_CODES.PLCTAG_ERR_NOT_FOUND.value;
+    if (t == null) return Status.errorNotFound.value;
     for (var i = 0; i < buffer_length; i++) {
       buffer.writeCharCode(t.bytes[offset + i]);
     }
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   @override
   int plc_tag_set_string(int tag, int offset, String value) {
     final t = tags[tag];
-    if (t == null) return STATUS_CODES.PLCTAG_ERR_NOT_FOUND.value;
+    if (t == null) return Status.errorNotFound.value;
     final bytes = value.codeUnits;
     for (var i = 0; i < bytes.length; i++) {
       t.bytes[offset + i] = bytes[i];
     }
     t.bytes[offset + bytes.length] = 0;
-    return STATUS_CODES.PLCTAG_STATUS_OK.value;
+    return Status.ok.value;
   }
 
   Map<String, String> _parseAttributes(String s) {

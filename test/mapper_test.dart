@@ -102,8 +102,8 @@ void main() {
   });
 
   test('BoolPlcMapper decodes Omron via non-zero', () {
-    final wrapper = _buildTag(plc: PlcType.Omron);
-    final mapper = BoolPlcMapper()..plcType = PlcType.Omron;
+    final wrapper = _buildTag(plc: PlcType.omron);
+    final mapper = BoolPlcMapper()..plcType = PlcType.omron;
     wrapper.setUInt8(0, 1);
     expect(mapper.decode(wrapper), isTrue);
     wrapper.setUInt8(0, 0);
@@ -162,7 +162,7 @@ void main() {
   test('PlcMapperBase array reshape rejects wrong rank', () {
     final wrapper = _buildTag(size: 4);
     final mapper = SintPlcMapper()..arrayDimensions = [2];
-    expect(() => mapper.decodeArray2D(wrapper), throwsException);
+    expect(() => mapper.decodeArray2D(wrapper), throwsStateError);
   });
 
   test('TagInfoPlcMapper decodes one entry against a known byte sequence', () {

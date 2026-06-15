@@ -1,34 +1,51 @@
+import 'package:libplctag_dart/data_types/plc_mapper.dart';
 import 'package:libplctag_dart/plc_type.dart';
 import 'package:libplctag_dart/tag.dart';
 
-import 'iplc_mapper.dart';
+/// Maps Dart `bool`s to/from PLC BOOL values.
+///
+/// ControlLogix packs BOOL arrays as 32-bit words, so [getElementCount]
+/// rounds the bit count up to the nearest DINT. Omron uses any non-zero
+/// byte as true; ControlLogix uses exactly `0xFF`.
+class BoolPlcMapper implements PlcMapper<bool> {
+  @override
+  PlcType plcType = PlcType.controlLogix;
 
-class BoolPlcMapper extends IPlcMapper<bool> {
+  @override
   int? get elementSize => 1;
 
-  int? getElementCount() {
-    if (arrayDimensions == null) return null;
+  @override
+  List<int>? arrayDimensions = [];
 
-    // BOOL arrays are packed as 32-bit words in ControlLogix; round up.
-    double totalElements = arrayDimensions!.fold<int>(1, (x, y) => x * y).toDouble();
-    return (totalElements / 32.0).ceil();
+  @override
+  int? getElementCount() {
+    final dims = arrayDimensions;
+    if (dims == null) return null;
+    final totalBits = dims.fold<int>(1, (acc, dim) => acc * dim).toDouble();
+    return (totalBits / 32.0).ceil();
   }
 
-  List<bool> decodeArray(Tag tag) {
-    if (elementSize == null) throw new Exception("ElementSize cannot be null for array decoding");
+  @override
+  bool decode(Tag tag) => plcType == PlcType.omron
+      ? tag.getUInt8(0) != 0
+      : tag.getUInt8(0) == 255;
 
-    final bitCount = tag.ElementCount! * 32;
-    final buffer = List.filled(bitCount, false);
-    for (var ii = 0; ii < bitCount; ii++) {
-      buffer[ii] = tag.getBit(ii);
+  @override
+  void encode(Tag tag, bool value) => tag.setUInt8(0, value ? 255 : 0);
+
+  List<bool> decodeArray(Tag tag) {
+    final bitCount = tag.elementCount! * 32;
+    final buffer = List<bool>.filled(bitCount, false);
+    for (var i = 0; i < bitCount; i++) {
+      buffer[i] = tag.getBit(i);
     }
     return buffer;
   }
 
   void encodeArray(Tag tag, List<bool> values) {
-    final bitCount = tag.ElementCount! * 32;
-    for (var ii = 0; ii < bitCount && ii < values.length; ii++) {
-      tag.setBit(ii, values[ii]);
+    final bitCount = tag.elementCount! * 32;
+    for (var i = 0; i < bitCount && i < values.length; i++) {
+      tag.setBit(i, values[i]);
     }
   }
 
@@ -38,9 +55,7 @@ class BoolPlcMapper extends IPlcMapper<bool> {
   }
 
   void encodeArray2D(Tag tag, List<List<bool>> values) {
-    final flat = <bool>[];
-    for (final row in values) flat.addAll(row);
-    encodeArray(tag, flat);
+    encodeArray(tag, [for (final row in values) ...row]);
   }
 
   List<List<List<bool>>> decodeArray3D(Tag tag) {
@@ -49,52 +64,33 @@ class BoolPlcMapper extends IPlcMapper<bool> {
   }
 
   void encodeArray3D(Tag tag, List<List<List<bool>>> values) {
-    final flat = <bool>[];
-    for (final plane in values) {
-      for (final row in plane) flat.addAll(row);
-    }
-    encodeArray(tag, flat);
+    encodeArray(tag, [
+      for (final plane in values)
+        for (final row in plane) ...row,
+    ]);
   }
-
-  bool decode(Tag tag) => tag.plcType == PlcType.Omron ? tag.getUInt8(0) != 0 : tag.getUInt8(0) == 255;
-
-  void encode(Tag tag, bool value) => tag.setUInt8(0, value == true ? 255 : 0);
-
-  List<int>? _arrayDimensions = [];
-  List<int>? get arrayDimensions => _arrayDimensions;
-  set arrayDimensions(value) => _arrayDimensions = value;
-
-  PlcType _plcType = PlcType.ControlLogix;
-  PlcType get plcType => _plcType;
-  set plcType(value) => _plcType = value;
 
   List<int> _requireDims(int rank) {
     final dims = arrayDimensions;
     if (dims == null || dims.length != rank) {
-      throw new Exception("arrayDimensions must have rank $rank for this operation");
+      throw StateError('arrayDimensions must have rank $rank for this operation');
     }
     return dims;
   }
 
-  List<List<bool>> _reshape2D(List<bool> flat, int rows, int cols) {
-    final out = <List<bool>>[];
-    for (var r = 0; r < rows; r++) {
-      out.add(flat.sublist(r * cols, (r + 1) * cols));
-    }
-    return out;
-  }
+  List<List<bool>> _reshape2D(List<bool> flat, int rows, int cols) => [
+        for (var r = 0; r < rows; r++) flat.sublist(r * cols, (r + 1) * cols),
+      ];
 
   List<List<List<bool>>> _reshape3D(List<bool> flat, int planes, int rows, int cols) {
     final out = <List<List<bool>>>[];
     final planeSize = rows * cols;
     for (var p = 0; p < planes; p++) {
       final planeStart = p * planeSize;
-      final plane = <List<bool>>[];
-      for (var r = 0; r < rows; r++) {
-        final rowStart = planeStart + r * cols;
-        plane.add(flat.sublist(rowStart, rowStart + cols));
-      }
-      out.add(plane);
+      out.add([
+        for (var r = 0; r < rows; r++)
+          flat.sublist(planeStart + r * cols, planeStart + (r + 1) * cols),
+      ]);
     }
     return out;
   }

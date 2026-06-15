@@ -1,69 +1,78 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:libplctag_dart/data_types/iplc_mapper.dart';
+import 'package:libplctag_dart/data_types/plc_mapper.dart';
 import 'package:libplctag_dart/data_types/tag_info.dart';
 import 'package:libplctag_dart/plc_type.dart';
 import 'package:libplctag_dart/tag.dart';
-import 'dart:math' as math;
 
-import 'package:tuple/tuple.dart';
+/// Decodes the variable-length tag listing buffer returned by special
+/// Allen-Bradley list-tags requests.
+///
+/// Each entry is a 22-byte header followed by a name of declared length.
+/// Encoding is not supported — this mapper is read-only.
+class TagInfoPlcMapper implements PlcMapper<List<TagInfo>> {
+  /// libplctag caps tag names at this many wide chars.
+  static const int tagStringSize = 200;
 
-class TagInfoPlcMapper implements IPlcMapper<List<TagInfo>> {
-  static const TAG_STRING_SIZE = 200;
+  @override
+  PlcType plcType = PlcType.controlLogix;
 
-  PlcType _plcType = PlcType.ControlLogix;
-  PlcType get plcType => _plcType;
-  set plcType(value) => _plcType = value;
-
-  //TODO: Is null appropriate since it's unknown?
+  @override
   int? get elementSize => null;
+
+  @override
   List<int>? get arrayDimensions => null;
-  set arrayDimensions(value) => throw new Exception("This plcMapper can only be used to read Tag Information");
 
-  Tuple2<TagInfo, int> DecodeTagInfo(Tag tag, int offset) {
-    var tagInstanceId = tag.getUInt32(offset);
-    var tagType = tag.getUInt16(offset + 4);
-    var tagLength = tag.getUInt16(offset + 6);
-    var tagArrayDims = <int>[tag.getUInt32(offset + 8), tag.getUInt32(offset + 12), tag.getUInt32(offset + 16)];
-
-    var apparentTagNameLength = tag.getUInt16(offset + 20);
-    var actualTagNameLength = math.min(apparentTagNameLength, TAG_STRING_SIZE * 2 - 1);
-
-    var tagNameGenerator = BytesBuilder();
-    for (int i = offset + 22; i < offset + 22 + actualTagNameLength; i++) {
-      tagNameGenerator.addByte(tag.getUInt8(i));
-    }
-    var tagNameBytes = tagNameGenerator.toBytes();
-
-    var tagName = ascii.decode(tagNameBytes);
-
-    int elementSize = 22 + actualTagNameLength;
-
-    return Tuple2(TagInfo(tagInstanceId, tagType, tagName, tagLength, tagArrayDims), elementSize);
+  @override
+  set arrayDimensions(List<int>? value) {
+    throw UnsupportedError('TagInfoPlcMapper is read-only');
   }
 
+  @override
+  int? getElementCount() => null;
+
+  @override
   List<TagInfo> decode(Tag tag) {
-    var buffer = <TagInfo>[];
-
-    var tagSize = tag.getSize();
-
-    int offset = 0;
+    final result = <TagInfo>[];
+    final tagSize = tag.getSize();
+    var offset = 0;
     while (offset < tagSize) {
-      var decoded = DecodeTagInfo(tag, offset);
-      buffer.add(decoded.item1);
-      offset += decoded.item2;
+      final (info, size) = _decodeEntry(tag, offset);
+      result.add(info);
+      offset += size;
     }
-
-    return buffer;
+    return result;
   }
 
+  @override
   void encode(Tag tag, List<TagInfo> value) {
-    throw new Exception("This plcMapper can only be used to read Tag Information");
+    throw UnsupportedError('TagInfoPlcMapper is read-only');
   }
 
-  int? getElementCount() {
-    //TODO: We know this value after we decode once. SHould we trigger a decode or cache the value after first decode?
-    return null;
+  (TagInfo, int) _decodeEntry(Tag tag, int offset) {
+    final instanceId = tag.getUInt32(offset);
+    final type = tag.getUInt16(offset + 4);
+    final length = tag.getUInt16(offset + 6);
+    final dimensions = [
+      tag.getUInt32(offset + 8),
+      tag.getUInt32(offset + 12),
+      tag.getUInt32(offset + 16),
+    ];
+
+    final declaredNameLength = tag.getUInt16(offset + 20);
+    final actualNameLength = math.min(declaredNameLength, tagStringSize * 2 - 1);
+
+    final nameBytes = BytesBuilder();
+    for (var i = offset + 22; i < offset + 22 + actualNameLength; i++) {
+      nameBytes.addByte(tag.getUInt8(i));
+    }
+    final name = ascii.decode(nameBytes.toBytes());
+
+    return (
+      TagInfo(instanceId, type, name, length, dimensions),
+      22 + actualNameLength,
+    );
   }
 }

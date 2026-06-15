@@ -1,265 +1,184 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:libplctag_dart/libplctag_dart.dart';
-import 'package:libplctag_dart/native/plctag.dart' show TagCallback, LogCallback;
+import 'package:libplctag_dart/debug_level.dart';
+import 'package:libplctag_dart/native/plctag.dart';
+import 'package:libplctag_dart/native_tag.dart';
+import 'package:libplctag_dart/native_tag_wrapper.dart';
+import 'package:libplctag_dart/plc_type.dart';
+import 'package:libplctag_dart/protocol.dart';
+import 'package:libplctag_dart/status.dart';
+import 'package:libplctag_dart/tag_event.dart';
 
+/// Untyped tag facade: exposes the raw byte-level read/write API plus the
+/// configuration attributes used to construct the underlying native tag.
+///
+/// For a strongly-typed handle that decodes/encodes a Dart value through
+/// a [PlcMapper], use `Tag<T>` from `package:libplctag_dart/tag_of_t.dart`.
 class Tag {
-  final NativeTagWrapper _tag = new NativeTagWrapper(new NativeTag());
+  /// Run-once finalizer that destroys the native handle if the user
+  /// forgets to call [dispose]. Adopted by every [Tag] on construction.
+  static final Finalizer<NativeTagWrapper> _finalizer =
+      Finalizer<NativeTagWrapper>((wrapper) => wrapper.dispose());
+
+  final NativeTagWrapper _tag;
   StreamController<TagEvent>? _eventController;
 
-  // /// <summary>
-  // /// True if <see cref="Initialize"/> or <see cref="InitializeAsync"/> has been called.
-  // /// </summary>
-  // bool get IsInitialized => _tag.IsInitialized;
+  Tag() : _tag = NativeTagWrapper(NativeTag()) {
+    _finalizer.attach(this, _tag, detach: this);
+  }
 
-  /// <summary>
-  /// Optional An integer number of elements per tag .
-  /// </summary>
-  ///
-  /// <remarks>
-  /// All tags are treated as arrays.
-  /// Tags that are not arrays are considered to have a length of one element.
-  /// This attribute determines how many elements are in the tag.
-  /// Defaults to one (1) if not found.
-  /// </remarks>
-  int? get ElementCount => _tag.elementCount;
-  void set ElementCount(int? value) => _tag.elementCount = value;
+  // -------------------------------------------------------------------
+  // Configurable properties — see libplctag's attribute string docs.
+  // -------------------------------------------------------------------
 
-  /// <summary>
-  /// Optional An integer number of bytes per element
-  /// </summary>
-  ///
-  /// <remarks>
-  /// This attribute determines the size of a single element of the tag.
-  /// Ignored for Modbus and for Allen-Bradley PLCs.
-  /// </remarks>
-  int? get ElementSize => _tag.elementSize;
-  void set ElementSize(int? value) => _tag.elementSize = value;
+  /// Number of elements in the tag. All tags are treated as arrays;
+  /// non-arrays have length 1.
+  int? get elementCount => _tag.elementCount;
+  set elementCount(int? value) => _tag.elementCount = value;
 
-  /// <summary>
-  /// This tells the library what host name or IP address to use for the PLC
-  /// or the gateway to the PLC (in the case that the PLC is remote).
-  /// </summary>
-  String? get Gateway => _tag.gateway;
-  set Gateway(String? value) => _tag.gateway = value;
+  /// Bytes per element. Ignored for Modbus and Allen-Bradley PLCs.
+  int? get elementSize => _tag.elementSize;
+  set elementSize(int? value) => _tag.elementSize = value;
 
-  /// <summary>
-  /// This is the full name of the tag.
-  /// For program tags, prepend `Program:{ProgramName}.`
-  /// where {ProgramName} is the name of the program in which the tag is created.
-  /// </summary>
-  String? get Name => _tag.name;
-  set Name(String? value) => _tag.name = value;
+  /// Hostname or IP address of the PLC (or gateway to it).
+  String? get gateway => _tag.gateway;
+  set gateway(String? value) => _tag.gateway = value;
 
-  /// <summary>
-  /// This attribute is required for CompactLogix/ControlLogix tags
-  /// and for tags using a DH+ protocol bridge (i.e. a DHRIO module) to get to a PLC/5, SLC 500, or MicroLogix PLC on a remote DH+ link.
-  /// The attribute is ignored if it is not a DH+ bridge route, but will generate a warning if debugging is active.
-  /// Note that Micro800 connections must not have a path attribute.
-  /// </summary>
-  String? get Path => _tag.path;
-  set Path(String? value) => _tag.path = value;
+  /// Fully-qualified tag name. Prepend `Program:{ProgramName}.` for program-scoped tags.
+  String? get name => _tag.name;
+  set name(String? value) => _tag.name = value;
 
-  /// <summary>
-  /// The type of PLC
-  /// </summary>
+  /// Routing path. Required for CompactLogix/ControlLogix tags and DH+
+  /// bridge routes; must be omitted for Micro800.
+  String? get path => _tag.path;
+  set path(String? value) => _tag.path = value;
+
+  /// PLC family. Written as `plc=<wireName>` in the attribute string.
   PlcType? get plcType => _tag.plcType;
-  set plcType(value) => _tag.plcType = value;
+  set plcType(PlcType? value) => _tag.plcType = value;
 
-  /// <summary>
-  /// Determines the type of the PLC Protocol.
-  /// </summary>
-  String? get protocol => _tag.protocol;
-  set protocol(value) => _tag.protocol = value.toString().replaceAll("Protocol.", "");
+  /// Wire protocol. Written as `protocol=<wireName>` in the attribute string.
+  Protocol? get protocol => _protocol;
+  set protocol(Protocol? value) {
+    _protocol = value;
+    _tag.protocol = value?.wireName;
+  }
 
-  /// <summary>
-  /// Optional. Use this attribute to cause the tag read operations to cache data the requested number of milliseconds.
-  /// This can be used to lower the actual number of requests against the PLC.
-  /// Example read_cache_ms=100 will result in read operations no more often than once every 100 milliseconds.
-  /// </summary>
-  int? get ReadCacheMillisecondDuration => _tag.readCacheMillisecondDuration;
-  set ReadCacheMillisecondDuration(value) => _tag.readCacheMillisecondDuration = value;
+  Protocol? _protocol;
 
-  /// <summary>
-  /// A timeout value that is used for Initialize/Read/Write methods.
-  /// It applies to both synchronous and asynchronous calls.
-  /// </summary>
-  Duration? get Timeout => _tag.timeout;
-  set Timeout(value) => _tag.timeout = value;
+  /// Cache reads for at most this many milliseconds — useful to throttle
+  /// frequent reads of the same tag.
+  int? get readCacheMillisecondDuration => _tag.readCacheMillisecondDuration;
+  set readCacheMillisecondDuration(int? value) =>
+      _tag.readCacheMillisecondDuration = value;
 
-  /// <summary>
-  /// Optional. Control whether to use connected or unconnected messaging.
-  /// Only valid on Logix-class PLCs. Connected messaging is required on Micro800 and DH+ bridged links.
-  /// Default is PLC-specific and link-type specific. Generally you do not need to set this.
-  /// </summary>
-  bool? get UseConnectedMessaging => _tag.useConnectedMessaging;
-  set UseConnectedMessaging(value) => _tag.useConnectedMessaging = value;
+  /// Timeout for [initialize], [read], [write], and their async variants.
+  Duration get timeout => _tag.timeout;
+  set timeout(Duration value) => _tag.timeout = value;
 
-  /// <summary>
-  /// Optional. An integer number of milliseconds to periodically read data from the PLC.
-  /// </summary>
-  ///
-  /// <remarks>
-  /// Use this attribute to automatically read data from the PLC on a set interval.
-  /// This can be used in conjunction with the <see cref="ReadStarted"/> and <see cref="ReadCompleted"/> events to respond to the data updates.
-  /// </remarks>
-  Duration? get AutoSyncReadInterval => _tag.autoSyncReadInterval;
-  set AutoSyncReadInterval(value) => _tag.autoSyncReadInterval = value;
+  /// Whether to use connected messaging. Only meaningful on Logix PLCs;
+  /// required on Micro800 and DH+ bridged links. Defaults vary by PLC.
+  bool? get useConnectedMessaging => _tag.useConnectedMessaging;
+  set useConnectedMessaging(bool? value) => _tag.useConnectedMessaging = value;
 
-  /// <summary>
-  /// Optional. An integer number of milliseconds to buffer tag data changes before writing to the PLC.
-  /// </summary>
-  ///
-  /// <remarks>
-  /// Use this attribute to automatically write data to the PLC a set duration after setting its value.
-  /// This can be used to lower the actual number of write operations by locally buffering local writes, and only writing to the PLC the most recent one when the wait completes.
-  /// You can determine when a write starts and completes by catching the <see cref="WriteStarted"/> and <see cref="WriteCompleted"/> events.
-  /// </remarks>
-  Duration? get AutoSyncWriteInterval => _tag.autoSyncWriteInterval;
-  set AutoSyncWriteInterval(value) => _tag.autoSyncWriteInterval = value;
+  /// Periodic auto-read interval. Used in conjunction with [events] to
+  /// react to PLC-side changes.
+  Duration? get autoSyncReadInterval => _tag.autoSyncReadInterval;
+  set autoSyncReadInterval(Duration? value) => _tag.autoSyncReadInterval = value;
+
+  /// Buffer interval before writes are pushed to the PLC. Reduces wire
+  /// traffic by coalescing rapid updates.
+  Duration? get autoSyncWriteInterval => _tag.autoSyncWriteInterval;
+  set autoSyncWriteInterval(Duration? value) => _tag.autoSyncWriteInterval = value;
 
   DebugLevel get debugLevel => _tag.debugLevel;
-  set debugLevel(value) => _tag.debugLevel = value;
+  set debugLevel(DebugLevel value) => _tag.debugLevel = value;
 
-  /// <summary>
-  /// Configures. the byte order of 16-bit integers.
-  /// </summary>
+  /// Byte order of 16-bit integers (e.g. `'10'` for little-endian).
   String? get int16ByteOrder => _tag.int16ByteOrder;
-  set int16ByteOrder(value) => _tag.int16ByteOrder = value;
+  set int16ByteOrder(String? value) => _tag.int16ByteOrder = value;
 
-  /// <summary>
-  /// Optional. Configures the byte order of 32-bit integers.
-  /// </summary>
   String? get int32ByteOrder => _tag.int32ByteOrder;
-  set int32ByteOrder(value) => _tag.int32ByteOrder = value;
+  set int32ByteOrder(String? value) => _tag.int32ByteOrder = value;
 
-  /// <summary>
-  /// Optional. Configures the byte order of 64-bit integers.
-  /// </summary>
-  String? get Int64ByteOrder => _tag.int64ByteOrder;
-  set Int64ByteOrder(value) => _tag.int64ByteOrder = value;
+  String? get int64ByteOrder => _tag.int64ByteOrder;
+  set int64ByteOrder(String? value) => _tag.int64ByteOrder = value;
 
-  /// <summary>
-  /// Optional. Configures the byte order of 32-bit floating point values.
-  /// </summary>
-  String? get Float32ByteOrder => _tag.float32ByteOrder;
-  set Float32ByteOrder(value) => _tag.float32ByteOrder = value;
+  String? get float32ByteOrder => _tag.float32ByteOrder;
+  set float32ByteOrder(String? value) => _tag.float32ByteOrder = value;
 
-  /// <summary>
-  /// Optional. Configures the byte order of 64-bit floating point values.
-  /// </summary>
-  String? get Float64ByteOrder => _tag.float64ByteOrder;
-  set Float64ByteOrder(value) => _tag.float64ByteOrder = value;
+  String? get float64ByteOrder => _tag.float64ByteOrder;
+  set float64ByteOrder(String? value) => _tag.float64ByteOrder = value;
 
-  /// <summary>
-  /// Optional. A positive integer value of 1, 2, 4, or 8 determining how big the leading count word is in a string.
-  /// </summary>
+  /// Size of the leading count word in a string (1, 2, 4 or 8 bytes).
   int? get stringCountWordBytes => _tag.stringCountWordBytes;
-  set stringCountWordBytes(value) => _tag.stringCountWordBytes = value;
+  set stringCountWordBytes(int? value) => _tag.stringCountWordBytes = value;
 
-  /// <summary>
-  /// Optional. Determines whether character bytes are swapped within 16-bit words.
-  /// </summary>
-  bool? get StringIsByteSwapped => _tag.stringIsByteSwapped;
-  set StringIsByteSwapped(value) => _tag.stringIsByteSwapped = value;
+  bool? get stringIsByteSwapped => _tag.stringIsByteSwapped;
+  set stringIsByteSwapped(bool? value) => _tag.stringIsByteSwapped = value;
 
-  /// <summary>
-  /// Optional. Determines whether strings have a count word or not.
-  /// </summary>
-  bool? get StringIsCounted => _tag.stringIsCounted;
-  set StringIsCounted(value) => _tag.stringIsCounted = value;
+  bool? get stringIsCounted => _tag.stringIsCounted;
+  set stringIsCounted(bool? value) => _tag.stringIsCounted = value;
 
-  /// <summary>
-  /// Optional. Determines whether strings have a fixed length that they occupy.
-  /// </summary>
-  bool? get StringIsFixedLength => _tag.stringIsFixedLength;
-  set StringIsFixedLength(value) => _tag.stringIsFixedLength = value;
+  bool? get stringIsFixedLength => _tag.stringIsFixedLength;
+  set stringIsFixedLength(bool? value) => _tag.stringIsFixedLength = value;
 
-  /// <summary>
-  /// Optional. Determines whether strings are zero-terminated as is done in C.
-  /// </summary>
-  bool? get StringIsZeroTerminated => _tag.stringIsZeroTerminated;
-  set StringIsZeroTerminated(value) => _tag.stringIsZeroTerminated = value;
+  bool? get stringIsZeroTerminated => _tag.stringIsZeroTerminated;
+  set stringIsZeroTerminated(bool? value) => _tag.stringIsZeroTerminated = value;
 
-  /// <summary>
-  /// Optional. Determines the maximum number of character bytes in a string.
-  /// </summary>
-  int? get StringMaxCapacity => _tag.stringMaxCapacity;
-  set StringMaxCapacity(value) => _tag.stringMaxCapacity = value;
+  int? get stringMaxCapacity => _tag.stringMaxCapacity;
+  set stringMaxCapacity(int? value) => _tag.stringMaxCapacity = value;
 
-  /// <summary>
-  /// Optional. A positive integer value determining the total number of padding bytes at the end of a string.
-  /// </summary>
-  int? get StringPadBytes => _tag.stringPadBytes;
-  set StringPadBytes(value) => _tag.stringPadBytes = value;
+  int? get stringPadBytes => _tag.stringPadBytes;
+  set stringPadBytes(int? value) => _tag.stringPadBytes = value;
 
-  /// <summary>
-  /// Optional. A positive integer value determining the total number of bytes used in the tag buffer by a string. Must be used with str_is_fixed_length.
-  /// </summary>
-  int? get StringTotalLength => _tag.stringTotalLength;
-  set StringTotalLength(value) => _tag.stringTotalLength = value;
+  int? get stringTotalLength => _tag.stringTotalLength;
+  set stringTotalLength(int? value) => _tag.stringTotalLength = value;
 
-  /// <summary>
-  /// Creates the underlying data structures and references required before tag operations.
-  /// </summary>
-  ///
-  /// <remarks>
-  /// Initializes the tag by establishing necessary connections.
-  /// Can only be called once per instance.
-  /// Timeout is controlled via class property.
-  /// </remarks>
-  void Initialize() => _tag.initialize();
+  // -------------------------------------------------------------------
+  // Lifecycle
+  // -------------------------------------------------------------------
 
-  /// <summary>
-  /// Executes a synchronous read on a tag.
-  /// Timeout is controlled via class property.
-  /// </summary>
-  ///
-  /// <remarks>
-  /// Reading a tag brings the data at the time of read into the local memory of the PC running the library.
-  /// The data is not automatically kept up to date.
-  /// If you need to find out the data periodically, you need to read the tag periodically.
-  /// </remarks>
+  /// Allocate native resources and connect to the PLC. May only be called once.
+  void initialize() => _tag.initialize();
+
+  /// Synchronous read into the local tag buffer.
   void read() => _tag.read();
 
-  /// Initiates a non-blocking read and completes when the read finishes (or [Timeout] elapses).
+  /// Non-blocking read; completes when the operation finishes or [timeout] elapses.
   Future<void> readAsync() => _tag.readAsync();
 
-  /// <summary>
-  /// Executes a synchronous write on a tag.
-  /// Timeout is controlled via class property.
-  /// </summary>
-  ///
-  /// <remarks>
-  /// Writing a tag sends the data from local memory to the target PLC.
-  /// </remarks>
+  /// Synchronous write from the local tag buffer to the PLC.
   void write() => _tag.write();
 
-  /// Initiates a non-blocking write and completes when the write finishes (or [Timeout] elapses).
+  /// Non-blocking write; completes when the operation finishes or [timeout] elapses.
   Future<void> writeAsync() => _tag.writeAsync();
 
+  /// Abort the current in-flight operation, if any.
   void abort() => _tag.abort();
 
+  /// Release native resources. Safe to call multiple times. Once called,
+  /// any further use of this [Tag] throws.
   void dispose() {
+    _finalizer.detach(this);
     _eventController?.close();
     _eventController = null;
     _tag.dispose();
   }
 
-  /// <summary>
-  /// This function retrieves a segment of raw, unprocessed bytes from the tag buffer.
-  /// </summary>
+  /// Raw, unprocessed tag buffer. Length equals [getSize].
   Uint8List getBuffer() => _tag.getBuffer();
 
   int getSize() => _tag.getSize();
   void setSize(int newSize) => _tag.setSize(newSize);
 
-  /// <summary>
-  /// Check the operational status of the tag
-  /// </summary>
-  /// <returns>Tag's current status</returns>
+  /// Current operational status of the tag.
   Status getStatus() => _tag.getStatus();
+
+  // -------------------------------------------------------------------
+  // Raw byte-level accessors
+  // -------------------------------------------------------------------
 
   bool getBit(int offset) => _tag.getBit(offset);
   void setBit(int offset, bool value) => _tag.setBit(offset, value);
@@ -300,21 +219,27 @@ class Tag {
   int getStringCapacity(int offset) => _tag.getStringCapacity(offset);
   String getString(int offset) => _tag.getString(offset);
 
+  // -------------------------------------------------------------------
+  // Runtime attributes + callbacks + events
+  // -------------------------------------------------------------------
+
   /// Read a runtime integer attribute. Tag must be initialized.
   int getIntAttribute(String attributeName) => _tag.getIntAttribute(attributeName);
 
   /// Write a runtime integer attribute. Tag must be initialized.
-  void setIntAttribute(String attributeName, int value) => _tag.setIntAttribute(attributeName, value);
+  void setIntAttribute(String attributeName, int value) =>
+      _tag.setIntAttribute(attributeName, value);
 
-  /// Register a Dart callback to receive native events for this tag
-  /// (e.g. read started/completed, write started/completed, abort, destroy).
+  /// Register a raw Dart callback for native tag events.
+  ///
+  /// Most callers should subscribe to [events] instead.
   void registerCallback(TagCallback callback) => _tag.registerCallback(callback);
 
-  /// Unregister the previously-registered callback for this tag.
+  /// Unregister the callback previously installed by [registerCallback].
   void unregisterCallback() => _tag.unregisterCallback();
 
-  /// Stream of typed tag events. Lazily registers a native callback on first
-  /// listen and unregisters on cancel. Only one listener at a time.
+  /// Broadcast stream of typed [TagEvent]s for this tag. Lazily registers
+  /// a native callback on first listen and unregisters on cancel.
   Stream<TagEvent> get events {
     final existing = _eventController;
     if (existing != null) return existing.stream;
@@ -329,24 +254,30 @@ class Tag {
       onCancel: () {
         try {
           _tag.unregisterCallback();
-        } catch (_) {}
+        } catch (_) {
+          // The tag may already be disposed.
+        }
       },
     );
     _eventController = controller;
     return controller.stream;
   }
 
-  /// Shut down the native library, releasing all internal resources.
-  /// Call only when no tags are in use; new tags can still be created after.
+  // -------------------------------------------------------------------
+  // Library-wide operations
+  // -------------------------------------------------------------------
+
+  /// Shut down the native library. Call only after every tag is destroyed.
   static void shutdownLibrary() => NativeTagWrapper.shutdownLibrary();
 
-  /// Check that the linked native library is at least the given version.
-  /// Returns a [Status.value]; [Status.Ok] (0) means the version is sufficient.
+  /// Check that the loaded native library is at least the given version.
+  /// Returns [Status.ok].`value` (0) if so.
   static int checkLibraryVersion(int major, int minor, int patch) =>
       NativeTagWrapper.checkLibraryVersion(major, minor, patch);
 
-  /// Register a global log callback for the native library.
-  static void registerLogger(LogCallback callback) => NativeTagWrapper.registerLogger(callback);
+  /// Register a global log callback.
+  static void registerLogger(LogCallback callback) =>
+      NativeTagWrapper.registerLogger(callback);
 
   /// Unregister the global log callback.
   static void unregisterLogger() => NativeTagWrapper.unregisterLogger();

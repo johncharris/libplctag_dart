@@ -1,9 +1,10 @@
+/// A single entry returned by an Allen-Bradley tag-listing read.
 class TagInfo {
-  int id;
-  int type;
-  String name;
-  int length;
-  List<int> dimensions;
+  final int id;
+  final int type;
+  final String name;
+  final int length;
+  final List<int> dimensions;
 
-  TagInfo(this.id, this.type, this.name, this.length, this.dimensions);
+  const TagInfo(this.id, this.type, this.name, this.length, this.dimensions);
 }

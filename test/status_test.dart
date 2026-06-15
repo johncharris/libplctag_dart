@@ -18,12 +18,16 @@ void main() {
     });
   }
 
-  test('ErrorBadConnection message has no leading space (Phase 1 regression)', () {
-    expect(Status.ErrorBadConnection.toString(), equals('-3 Bad Connection'));
+  test('errorBadConnection label has no leading space (regression)', () {
+    expect(Status.errorBadConnection.toString(), equals('-3 Bad Connection'));
   });
 
   test('toString includes the integer value and the human name', () {
-    expect(Status.Ok.toString(), equals('0 Ok'));
-    expect(Status.ErrorTimeout.toString(), equals('-32 Timeout'));
+    expect(Status.ok.toString(), equals('0 Ok'));
+    expect(Status.errorTimeout.toString(), equals('-32 Timeout'));
+  });
+
+  test('fromInt throws on an unknown code', () {
+    expect(() => Status.fromInt(-9999), throwsArgumentError);
   });
 }

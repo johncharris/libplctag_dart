@@ -1,43 +1,19 @@
 import 'dart:ffi';
 import 'dart:typed_data';
+
 import 'package:ffi/ffi.dart';
 
 extension StringExtensions on String {
-  /// Allocates a native C string. Caller must free the returned pointer.
-  Pointer<Char> toChar() {
-    return this.toNativeUtf8().cast<Char>();
-  }
-
-  /// Deprecated alias retained for source compatibility.
-  Pointer<Char> toInt8() => toChar();
+  /// Allocate a native UTF-8 C string. Caller must `malloc.free` the result.
+  Pointer<Char> toChar() => toNativeUtf8().cast<Char>();
 }
 
 extension Uint8ListBlobConversion on Uint8List {
-  /// Allocates a pointer filled with the Uint8List data.
+  /// Allocate native memory and copy this list into it.
+  /// Caller must `malloc.free` the result.
   Pointer<Uint8> allocatePointer() {
     final blob = calloc<Uint8>(length);
-    final blobBytes = blob.asTypedList(length);
-    blobBytes.setAll(0, this);
+    blob.asTypedList(length).setAll(0, this);
     return blob;
   }
 }
-
-extension Int8ListBlobConversion on Uint8List {
-  /// Allocates a pointer filled with the Uint8List data.
-  Pointer<Int8> allocateInt8Pointer() {
-    final blob = calloc<Int8>(length);
-    final blobBytes = blob.asTypedList(length);
-    blobBytes.setAll(0, this);
-    return blob;
-  }
-}
-
-// extension PointerExtensions<T extends NativeType> on Pointer<T> {
-//   String toStr() {
-//     if (T == Int8) {
-//       return Utf8.fromUtf8(cast<Utf8>());
-//     }
-
-//     throw UnsupportedError('${T} unsupported');
-//   }
-// }

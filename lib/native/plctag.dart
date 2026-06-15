@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ffi';
-import "package:ffi/ffi.dart";
-import 'package:libplctag_dart/native/extensions.dart';
+import 'dart:typed_data';
 
+import 'package:ffi/ffi.dart';
+
+import 'package:libplctag_dart/native/extensions.dart';
 import 'package:libplctag_dart/native/generated_bindings.dart';
 import 'package:libplctag_dart/native/library_extractor.dart';
-import 'package:libplctag_dart/native/status_codes.dart';
+import 'package:libplctag_dart/status.dart';
 
 /// Dart-side callback invoked when a tag event fires.
 typedef TagCallback = void Function(int tagId, int eventId, int status);
@@ -14,351 +15,274 @@ typedef TagCallback = void Function(int tagId, int eventId, int status);
 /// Dart-side log callback invoked by the native library.
 typedef LogCallback = void Function(int tagId, int debugLevel, String message);
 
-/// <summary>
-/// This class provides low-level (raw) access to the native libplctag library (which is written in C).
-/// The purpose of this package is to expose the API for this native library, and handle platform and configuration issues.
+/// Low-level proxy over the native libplctag C API.
 ///
-/// <para>See <see href="https://github.com/libplctag/libplctag/wiki/API"/> for documentation.</para>
-/// </summary>
-class plctag {
-  static late NativeLibrary NativeMethods;
+/// Method names match the underlying C symbols verbatim to make
+/// cross-references against the libplctag wiki obvious. Higher-level
+/// Dart-friendly wrappers live in [Tag] and [NativeTagWrapper].
+class Plctag {
+  Plctag._();
 
-  static bool _forceExtractLibrary = true;
-
-  /// <summary>
-  /// During initialization, this package extracts to disk the appropriate native library.
-  /// By default, it will overwrite files with the same filename (plctag.dll, libplctag.so, or libplctag.dylib).
-  /// If you wish to disable this behaviour and use a different native library (e.g. one that you've compiled yourself, or a pre-release), you can disable the Force Extract feature by setting this value to false.
-  /// </summary>
-  static bool get ForceExtractLibrary => _forceExtractLibrary;
-  static void set ForceExtractLibrary(value) {
-    if (_libraryAlreadyInitialized) throw new Exception("Library already initialized");
-    _forceExtractLibrary = value;
-  }
-
+  static late NativeLibrary _nativeMethods;
   static bool _libraryAlreadyInitialized = false;
 
+  /// The native library bindings, lazily loaded on first FFI call.
+  static NativeLibrary get nativeMethods {
+    _extractLibraryIfRequired();
+    return _nativeMethods;
+  }
+
   /// Minimum native libplctag version required at load time.
-  /// Set to `null` to skip the check (default). The check runs once,
-  /// the first time any FFI method is invoked.
+  /// Set to `null` to skip the check (default `[2, 5, 0]`).
   static List<int>? requiredLibraryVersion = [2, 5, 0];
 
   static void _extractLibraryIfRequired() {
     if (_libraryAlreadyInitialized) return;
-    NativeMethods = NativeLibrary(LibraryExtractor.getLibrary());
+    _nativeMethods = NativeLibrary(LibraryExtractor.getLibrary());
     _libraryAlreadyInitialized = true;
 
     final required = requiredLibraryVersion;
     if (required != null && required.length == 3) {
-      final result =
-          NativeMethods.plc_tag_check_lib_version(required[0], required[1], required[2]);
-      if (result != STATUS_CODES.PLCTAG_STATUS_OK.value) {
-        throw new Exception(
-            'libplctag is older than the required version ${required.join(".")} (status $result)');
+      final result = _nativeMethods.plc_tag_check_lib_version(
+          required[0], required[1], required[2]);
+      if (result != Status.ok.value) {
+        throw Exception(
+            'libplctag is older than required version ${required.join(".")} (status $result)');
       }
     }
   }
 
-  static final Map<int, NativeCallable<Void Function(Int32, Int, Int)>> _tagCallbacks = {};
+  static final Map<int, NativeCallable<Void Function(Int32, Int, Int)>>
+      _tagCallbacks = {};
   static NativeCallable<Void Function(Int32, Int, Pointer<Char>)>? _logCallback;
 
-  static int plc_tag_check_lib_version(int req_major, int req_minor, int req_patch) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_check_lib_version(req_major, req_minor, req_patch);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_check_lib_version(int reqMajor, int reqMinor, int reqPatch) =>
+      nativeMethods.plc_tag_check_lib_version(reqMajor, reqMinor, reqPatch);
 
-  static int plc_tag_create(String lpString, int timeout) {
-    _extractLibraryIfRequired();
-    final ptr = lpString.toInt8();
+  // ignore: non_constant_identifier_names
+  static int plc_tag_create(String attributeString, int timeoutMs) {
+    final ptr = attributeString.toChar();
     try {
-      return NativeMethods.plc_tag_create(ptr, timeout);
+      return nativeMethods.plc_tag_create(ptr, timeoutMs);
     } finally {
       malloc.free(ptr);
     }
   }
 
-  static int plc_tag_destroy(int tag) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_destroy(tag);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_destroy(int tag) => nativeMethods.plc_tag_destroy(tag);
 
-  static void plc_tag_shutdown() {
-    _extractLibraryIfRequired();
-    NativeMethods.plc_tag_shutdown();
-  }
+  // ignore: non_constant_identifier_names
+  static void plc_tag_shutdown() => nativeMethods.plc_tag_shutdown();
 
-  static int plc_tag_register_callback(int tag_id, TagCallback callback) {
-    _extractLibraryIfRequired();
-    _tagCallbacks.remove(tag_id)?.close();
+  // ignore: non_constant_identifier_names
+  static int plc_tag_register_callback(int tagId, TagCallback callback) {
+    _tagCallbacks.remove(tagId)?.close();
     final native = NativeCallable<Void Function(Int32, Int, Int)>.listener(
-      (int tagId, int eventId, int status) => callback(tagId, eventId, status),
+      (int t, int e, int s) => callback(t, e, s),
     );
-    _tagCallbacks[tag_id] = native;
-    return NativeMethods.plc_tag_register_callback(tag_id, native.nativeFunction);
+    _tagCallbacks[tagId] = native;
+    return nativeMethods.plc_tag_register_callback(tagId, native.nativeFunction);
   }
 
-  static int plc_tag_unregister_callback(int tag_id) {
-    _extractLibraryIfRequired();
-    final result = NativeMethods.plc_tag_unregister_callback(tag_id);
-    _tagCallbacks.remove(tag_id)?.close();
+  // ignore: non_constant_identifier_names
+  static int plc_tag_unregister_callback(int tagId) {
+    final result = nativeMethods.plc_tag_unregister_callback(tagId);
+    _tagCallbacks.remove(tagId)?.close();
     return result;
   }
 
+  // ignore: non_constant_identifier_names
   static int plc_tag_register_logger(LogCallback callback) {
-    _extractLibraryIfRequired();
     _logCallback?.close();
     final native = NativeCallable<Void Function(Int32, Int, Pointer<Char>)>.listener(
       (int tagId, int debugLevel, Pointer<Char> message) {
-        final str = message.cast<Utf8>().toDartString();
-        callback(tagId, debugLevel, str);
+        callback(tagId, debugLevel, message.cast<Utf8>().toDartString());
       },
     );
     _logCallback = native;
-    return NativeMethods.plc_tag_register_logger(native.nativeFunction);
+    return nativeMethods.plc_tag_register_logger(native.nativeFunction);
   }
 
+  // ignore: non_constant_identifier_names
   static int plc_tag_unregister_logger() {
-    _extractLibraryIfRequired();
-    final result = NativeMethods.plc_tag_unregister_logger();
+    final result = nativeMethods.plc_tag_unregister_logger();
     _logCallback?.close();
     _logCallback = null;
     return result;
   }
 
-  static int plc_tag_lock(int tag) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_lock(tag);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_lock(int tag) => nativeMethods.plc_tag_lock(tag);
 
-  static int plc_tag_unlock(int tag) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_unlock(tag);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_unlock(int tag) => nativeMethods.plc_tag_unlock(tag);
 
-  static int plc_tag_status(int tag) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_status(tag);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_status(int tag) => nativeMethods.plc_tag_status(tag);
 
-  static String plc_tag_decode_error(int err) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_decode_error(err).cast<Utf8>().toDartString();
-  }
+  // ignore: non_constant_identifier_names
+  static String plc_tag_decode_error(int err) =>
+      nativeMethods.plc_tag_decode_error(err).cast<Utf8>().toDartString();
 
-  static int plc_tag_read(int tag, int timeout) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_read(tag, timeout);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_read(int tag, int timeoutMs) =>
+      nativeMethods.plc_tag_read(tag, timeoutMs);
 
-  static int plc_tag_write(int tag, int timeout) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_write(tag, timeout);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_write(int tag, int timeoutMs) =>
+      nativeMethods.plc_tag_write(tag, timeoutMs);
 
-  static int plc_tag_get_size(int tag) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_size(tag);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_size(int tag) => nativeMethods.plc_tag_get_size(tag);
 
-  static int plc_tag_set_size(int tag, int new_size) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_size(tag, new_size);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_size(int tag, int newSize) =>
+      nativeMethods.plc_tag_set_size(tag, newSize);
 
-  static int plc_tag_abort(int tag) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_abort(tag);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_abort(int tag) => nativeMethods.plc_tag_abort(tag);
 
-  static int plc_tag_get_int_attribute(int tag, String attrib_name, int default_value) {
-    _extractLibraryIfRequired();
-    final ptr = attrib_name.toInt8();
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_int_attribute(int tag, String name, int defaultValue) {
+    final ptr = name.toChar();
     try {
-      return NativeMethods.plc_tag_get_int_attribute(tag, ptr, default_value);
+      return nativeMethods.plc_tag_get_int_attribute(tag, ptr, defaultValue);
     } finally {
       malloc.free(ptr);
     }
   }
 
-  static int plc_tag_set_int_attribute(int tag, String attrib_name, int new_value) {
-    _extractLibraryIfRequired();
-    final ptr = attrib_name.toInt8();
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_int_attribute(int tag, String name, int newValue) {
+    final ptr = name.toChar();
     try {
-      return NativeMethods.plc_tag_set_int_attribute(tag, ptr, new_value);
+      return nativeMethods.plc_tag_set_int_attribute(tag, ptr, newValue);
     } finally {
       malloc.free(ptr);
     }
   }
 
-  static int plc_tag_get_uint64(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_uint64(tag, offset);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_uint64(int tag, int offset) =>
+      nativeMethods.plc_tag_get_uint64(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_int64(int tag, int offset) =>
+      nativeMethods.plc_tag_get_int64(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_uint64(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_uint64(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_int64(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_int64(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static double plc_tag_get_float64(int tag, int offset) =>
+      nativeMethods.plc_tag_get_float64(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_float64(int tag, int offset, double value) =>
+      nativeMethods.plc_tag_set_float64(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_uint32(int tag, int offset) =>
+      nativeMethods.plc_tag_get_uint32(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_int32(int tag, int offset) =>
+      nativeMethods.plc_tag_get_int32(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_uint32(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_uint32(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_int32(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_int32(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static double plc_tag_get_float32(int tag, int offset) =>
+      nativeMethods.plc_tag_get_float32(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_float32(int tag, int offset, double value) =>
+      nativeMethods.plc_tag_set_float32(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_uint16(int tag, int offset) =>
+      nativeMethods.plc_tag_get_uint16(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_int16(int tag, int offset) =>
+      nativeMethods.plc_tag_get_int16(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_uint16(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_uint16(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_int16(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_int16(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_uint8(int tag, int offset) =>
+      nativeMethods.plc_tag_get_uint8(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_int8(int tag, int offset) =>
+      nativeMethods.plc_tag_get_int8(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_uint8(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_uint8(tag, offset, value);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_int8(int tag, int offset, int value) =>
+      nativeMethods.plc_tag_set_int8(tag, offset, value);
 
-  static int plc_tag_get_int64(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_int64(tag, offset);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_bit(int tag, int bitOffset) =>
+      nativeMethods.plc_tag_get_bit(tag, bitOffset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_bit(int tag, int bitOffset, int value) =>
+      nativeMethods.plc_tag_set_bit(tag, bitOffset, value);
 
-  static int plc_tag_set_uint64(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_uint64(tag, offset, val);
-  }
+  // ignore: non_constant_identifier_names
+  static void plc_tag_set_debug_level(int debugLevel) =>
+      nativeMethods.plc_tag_set_debug_level(debugLevel);
 
-  static int plc_tag_set_int64(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_int64(tag, offset, val);
-  }
-
-  static double plc_tag_get_float64(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_float64(tag, offset);
-  }
-
-  static int plc_tag_set_float64(int tag, int offset, double val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_float64(tag, offset, val);
-  }
-
-  static int plc_tag_get_uint32(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_uint32(tag, offset);
-  }
-
-  static int plc_tag_get_int32(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_int32(tag, offset);
-  }
-
-  static int plc_tag_set_uint32(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_uint32(tag, offset, val);
-  }
-
-  static int plc_tag_set_int32(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_int32(tag, offset, val);
-  }
-
-  static double plc_tag_get_float32(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_float32(tag, offset);
-  }
-
-  static int plc_tag_set_float32(int tag, int offset, double val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_float32(tag, offset, val);
-  }
-
-  static int plc_tag_get_uint16(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_uint16(tag, offset);
-  }
-
-  static int plc_tag_get_int16(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_int16(tag, offset);
-  }
-
-  static int plc_tag_set_uint16(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_uint16(tag, offset, val);
-  }
-
-  static int plc_tag_set_int16(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_int16(tag, offset, val);
-  }
-
-  static int plc_tag_get_uint8(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_uint8(tag, offset);
-  }
-
-  static int plc_tag_get_int8(int tag, int offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_int8(tag, offset);
-  }
-
-  static int plc_tag_set_uint8(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_uint8(tag, offset, val);
-  }
-
-  static int plc_tag_set_int8(int tag, int offset, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_int8(tag, offset, val);
-  }
-
-  static int plc_tag_get_bit(int tag, int offset_bit) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_bit(tag, offset_bit);
-  }
-
-  static int plc_tag_set_bit(int tag, int offset_bit, int val) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_set_bit(tag, offset_bit, val);
-  }
-
-  static void plc_tag_set_debug_level(int debug_level) {
-    _extractLibraryIfRequired();
-    NativeMethods.plc_tag_set_debug_level(debug_level);
-  }
-
-  static int plc_tag_get_string(int tag_id, int string_start_offset, StringBuffer buffer, int buffer_length) {
-    _extractLibraryIfRequired();
-
-    final ptr = malloc.allocate<Char>(buffer_length);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_string(
+      int tag, int offset, StringBuffer buffer, int bufferLength) {
+    final ptr = malloc.allocate<Char>(bufferLength);
     try {
-      var result = NativeMethods.plc_tag_get_string(tag_id, string_start_offset, ptr, buffer_length);
-
-      if (result == STATUS_CODES.PLCTAG_STATUS_OK.value) {
+      final result = nativeMethods.plc_tag_get_string(tag, offset, ptr, bufferLength);
+      if (result == Status.ok.value) {
         final raw = ptr.cast<Uint8>();
-        for (int i = 0; i < buffer_length; i++) {
+        for (var i = 0; i < bufferLength; i++) {
           buffer.write(ascii.decode([(raw + i).value]));
         }
       }
-
       return result;
     } finally {
       malloc.free(ptr);
     }
   }
 
-  static int plc_tag_set_string(int tag_id, int string_start_offset, String string_val) {
-    _extractLibraryIfRequired();
-    final ptr = string_val.toInt8();
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_string(int tag, int offset, String value) {
+    final ptr = value.toChar();
     try {
-      return NativeMethods.plc_tag_set_string(tag_id, string_start_offset, ptr);
+      return nativeMethods.plc_tag_set_string(tag, offset, ptr);
     } finally {
       malloc.free(ptr);
     }
   }
 
-  static int plc_tag_get_string_length(int tag_id, int string_start_offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_string_length(tag_id, string_start_offset);
-  }
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_string_length(int tag, int offset) =>
+      nativeMethods.plc_tag_get_string_length(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_string_capacity(int tag, int offset) =>
+      nativeMethods.plc_tag_get_string_capacity(tag, offset);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_string_total_length(int tag, int offset) =>
+      nativeMethods.plc_tag_get_string_total_length(tag, offset);
 
-  static int plc_tag_get_string_capacity(int tag_id, int string_start_offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_string_capacity(tag_id, string_start_offset);
-  }
-
-  static int plc_tag_get_string_total_length(int tag_id, int string_start_offset) {
-    _extractLibraryIfRequired();
-    return NativeMethods.plc_tag_get_string_total_length(tag_id, string_start_offset);
-  }
-
-  static int plc_tag_get_raw_bytes(int tag_id, int start_offset, Uint8List buffer, int buffer_length) {
-    _extractLibraryIfRequired();
-
-    final ptr = malloc.allocate<Uint8>(buffer_length);
+  // ignore: non_constant_identifier_names
+  static int plc_tag_get_raw_bytes(
+      int tag, int startOffset, Uint8List buffer, int bufferLength) {
+    final ptr = malloc.allocate<Uint8>(bufferLength);
     try {
-      var result = NativeMethods.plc_tag_get_raw_bytes(tag_id, start_offset, ptr, buffer_length);
-
-      if (result == STATUS_CODES.PLCTAG_STATUS_OK.value) {
-        for (int i = 0; i < buffer_length; i++) {
+      final result =
+          nativeMethods.plc_tag_get_raw_bytes(tag, startOffset, ptr, bufferLength);
+      if (result == Status.ok.value) {
+        for (var i = 0; i < bufferLength; i++) {
           buffer[i] = (ptr + i).value;
         }
       }
@@ -368,12 +292,12 @@ class plctag {
     }
   }
 
-  static int plc_tag_set_raw_bytes(int tag_id, int start_offset, Uint8List buffer, int buffer_length) {
-    _extractLibraryIfRequired();
-
+  // ignore: non_constant_identifier_names
+  static int plc_tag_set_raw_bytes(
+      int tag, int startOffset, Uint8List buffer, int bufferLength) {
     final ptr = buffer.allocatePointer();
     try {
-      return NativeMethods.plc_tag_set_raw_bytes(tag_id, start_offset, ptr, buffer_length);
+      return nativeMethods.plc_tag_set_raw_bytes(tag, startOffset, ptr, bufferLength);
     } finally {
       malloc.free(ptr);
     }

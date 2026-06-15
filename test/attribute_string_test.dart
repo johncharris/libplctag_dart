@@ -28,7 +28,7 @@ void main() {
       ..protocol = 'ab_eip'
       ..gateway = 'x'
       ..name = 'y'
-      ..plcType = PlcType.Omron
+      ..plcType = PlcType.omron
       ..initialize();
     expect(mock.createAttributeStrings.single, contains('plc=omron-njnx'));
   });
@@ -39,7 +39,7 @@ void main() {
       ..protocol = 'ab_eip'
       ..gateway = 'x'
       ..name = 'y'
-      ..plcType = PlcType.ControlLogix
+      ..plcType = PlcType.controlLogix
       ..initialize();
     expect(mock.createAttributeStrings.single, contains('plc=controllogix'));
   });
@@ -82,9 +82,9 @@ void main() {
       ..protocol = 'ab_eip'
       ..gateway = 'x'
       ..name = 'y'
-      ..debugLevel = DebugLevel.Info
+      ..debugLevel = DebugLevel.info
       ..initialize();
-    expect(mock.createAttributeStrings.single, contains('debug=${DebugLevel.Info.value}'));
+    expect(mock.createAttributeStrings.single, contains('debug=${DebugLevel.info.value}'));
   });
 
   test('debug level None is omitted', () {

@@ -25,7 +25,7 @@ void main() {
       ..name = 'TestTag'
       ..initialize();
 
-    expect(() => tag.initialize(), throwsException);
+    expect(() => tag.initialize(), throwsStateError);
   });
 
   test('setting attribute after initialize throws', () {
@@ -36,7 +36,7 @@ void main() {
       ..name = 'TestTag'
       ..initialize();
 
-    expect(() => tag.name = 'OtherTag', throwsException);
+    expect(() => tag.name = 'OtherTag', throwsStateError);
   });
 
   test('operations after dispose throw', () {
@@ -48,9 +48,9 @@ void main() {
       ..initialize()
       ..dispose();
 
-    expect(() => tag.read(), throwsException);
-    expect(() => tag.write(), throwsException);
-    expect(() => tag.getSize(), throwsException);
+    expect(() => tag.read(), throwsStateError);
+    expect(() => tag.write(), throwsStateError);
+    expect(() => tag.getSize(), throwsStateError);
   });
 
   test('dispose is idempotent', () {

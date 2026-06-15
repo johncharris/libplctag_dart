@@ -3,10 +3,10 @@ import 'package:libplctag_dart/tag.dart';
 
 class UsintPlcMapper extends PlcMapperBase<int> {
   @override
-  int decodeAtOffset(Tag tag, int offset) => tag.getUInt8(offset);
+  int? get elementSize => 1;
 
   @override
-  int? get elementSize => 1;
+  int decodeAtOffset(Tag tag, int offset) => tag.getUInt8(offset);
 
   @override
   void encodeAtOffset(Tag tag, int offset, int value) => tag.setUInt8(offset, value);

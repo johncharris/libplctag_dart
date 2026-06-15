@@ -1,36 +1,30 @@
+/// PLC family. The associated [wireName] is the value used in the
+/// attribute string passed to the native `plc_tag_create`.
 enum PlcType {
-  /// <summary>
-  /// Control Logix-class PLC. Synonym for lgx, logix, controllogix, contrologix, compactlogix, clgx.
-  /// </summary>
-  ControlLogix,
+  /// Control Logix-class PLC. Synonyms: `lgx`, `logix`, `compactlogix`, `clgx`.
+  controlLogix('controllogix'),
 
-  /// <summary>
-  /// PLC/5 PLC. Synonym for plc5, plc.
-  /// </summary>
-  Plc5,
+  /// PLC/5 PLC. Synonyms: `plc`.
+  plc5('plc5'),
 
-  /// <summary>
-  /// SLC 500 PLC. Synonym for slc500, slc.
-  /// </summary>
-  Slc500,
+  /// SLC 500 PLC. Synonyms: `slc`.
+  slc500('slc500'),
 
-  /// <summary>
-  /// Control Logix-class PLC using the PLC/5 protocol. Synonym for lgxpccc, logixpccc, lgxplc5, lgx_pccc, logix_pccc, lgx_plc5.
-  /// </summary>
-  LogixPccc,
+  /// Control Logix-class PLC speaking the PLC/5 protocol.
+  /// Synonyms: `lgxpccc`, `logixpccc`, `lgx_pccc`, `lgx_plc5`.
+  logixPccc('logixpccc'),
 
-  /// <summary>
-  /// Micro800-class PLC. Synonym for micrologix800, mlgx800, micro800.
-  /// </summary>
-  Micro800,
+  /// Micro800-class PLC. Synonyms: `mlgx800`, `micrologix800`.
+  micro800('micro800'),
 
-  /// <summary>
-  /// MicroLogix PLC. Synonym for micrologix, mlgx.
-  /// </summary>
-  MicroLogix,
+  /// MicroLogix PLC. Synonyms: `mlgx`.
+  microLogix('micrologix'),
 
-  /// <summary>
-  /// Omron PLC. Synonym for omron-njnx, omron-nj, omron-nx, njnx, nx1p2
-  /// </summary>
-  Omron,
+  /// Omron PLC. Synonyms: `omron-nj`, `omron-nx`, `njnx`, `nx1p2`.
+  omron('omron-njnx');
+
+  const PlcType(this.wireName);
+
+  /// The string written into the `plc=` attribute when creating a tag.
+  final String wireName;
 }

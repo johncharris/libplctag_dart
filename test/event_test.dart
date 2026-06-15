@@ -39,9 +39,9 @@ void main() {
   });
 
   test('TagEvent carries the decoded Status', () {
-    final evt = TagEvent.fromRaw(7, TagEventType.readCompleted, Status.ErrorTimeout.value);
+    final evt = TagEvent.fromRaw(7, TagEventType.readCompleted, Status.errorTimeout.value);
     expect(evt!.tagId, equals(7));
-    expect(evt.status, equals(Status.ErrorTimeout));
+    expect(evt.status, equals(Status.errorTimeout));
   });
 
   test('readAsync resolves when the underlying read succeeds', () async {
@@ -55,7 +55,7 @@ void main() {
   });
 
   test('readAsync surfaces an error status as an exception', () async {
-    final mock = MockNativeTag()..statusOverride = StatusOverride(Status.ErrorBadConnection.value);
+    final mock = MockNativeTag()..statusOverride = StatusOverride(Status.errorBadConnection.value);
     final tag = NativeTagWrapper(mock)
       ..protocol = 'ab_eip'
       ..gateway = 'x'

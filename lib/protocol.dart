@@ -1,11 +1,14 @@
-class Protocol {
-  /// <summary>
-  /// Allen-Bradley specific flavor of EIP
-  /// </summary>
-  static const AllenBradleyEIP = "ab_eip";
+/// PLC wire protocol. The associated [wireName] is the value passed to
+/// the native `plc_tag_create` attribute string.
+enum Protocol {
+  /// Allen-Bradley flavour of EtherNet/IP.
+  abEip('ab_eip'),
 
-  /// <summary>
-  /// A Modbus TCP implementation used by many PLCs
-  /// </summary>
-  static const ModbusTCP = "modbus_tcp";
+  /// Modbus TCP, used by many PLCs.
+  modbusTcp('modbus_tcp');
+
+  const Protocol(this.wireName);
+
+  /// The string written into the `protocol=` attribute when creating a tag.
+  final String wireName;
 }
