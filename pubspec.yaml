@@ -20,3 +20,22 @@ ffigen:
   headers:
     entry-points:
       - 'libplctag.h'
+    include-directives:
+      - 'libplctag.h'
+  functions:
+    include:
+      - 'plc_tag_.*'
+  macros:
+    include:
+      - 'PLCTAG_.*'
+      - 'PLC_TAG_.*'
+  enums:
+    include:
+      - 'plctag_.*'
+  structs:
+    include:
+      - 'plctag_.*'
+  unnamed-enums:
+    include:
+      - 'PLCTAG_.*'
+      - 'PLC_TAG_.*'

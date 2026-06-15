@@ -3,9 +3,13 @@ import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 
 extension StringExtensions on String {
-  Pointer<Int8> toInt8() {
-    return this.toNativeUtf8().cast<Int8>();
+  /// Allocates a native C string. Caller must free the returned pointer.
+  Pointer<Char> toChar() {
+    return this.toNativeUtf8().cast<Char>();
   }
+
+  /// Deprecated alias retained for source compatibility.
+  Pointer<Char> toInt8() => toChar();
 }
 
 extension Uint8ListBlobConversion on Uint8List {

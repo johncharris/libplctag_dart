@@ -59,8 +59,8 @@ class plctag {
     }
   }
 
-  static final Map<int, NativeCallable<Void Function(Int32, Int32, Int32)>> _tagCallbacks = {};
-  static NativeCallable<Void Function(Int32, Int32, Pointer<Int8>)>? _logCallback;
+  static final Map<int, NativeCallable<Void Function(Int32, Int, Int)>> _tagCallbacks = {};
+  static NativeCallable<Void Function(Int32, Int, Pointer<Char>)>? _logCallback;
 
   static int plc_tag_check_lib_version(int req_major, int req_minor, int req_patch) {
     _extractLibraryIfRequired();
@@ -90,7 +90,7 @@ class plctag {
   static int plc_tag_register_callback(int tag_id, TagCallback callback) {
     _extractLibraryIfRequired();
     _tagCallbacks.remove(tag_id)?.close();
-    final native = NativeCallable<Void Function(Int32, Int32, Int32)>.listener(
+    final native = NativeCallable<Void Function(Int32, Int, Int)>.listener(
       (int tagId, int eventId, int status) => callback(tagId, eventId, status),
     );
     _tagCallbacks[tag_id] = native;
@@ -107,8 +107,8 @@ class plctag {
   static int plc_tag_register_logger(LogCallback callback) {
     _extractLibraryIfRequired();
     _logCallback?.close();
-    final native = NativeCallable<Void Function(Int32, Int32, Pointer<Int8>)>.listener(
-      (int tagId, int debugLevel, Pointer<Int8> message) {
+    final native = NativeCallable<Void Function(Int32, Int, Pointer<Char>)>.listener(
+      (int tagId, int debugLevel, Pointer<Char> message) {
         final str = message.cast<Utf8>().toDartString();
         callback(tagId, debugLevel, str);
       },
@@ -308,13 +308,14 @@ class plctag {
   static int plc_tag_get_string(int tag_id, int string_start_offset, StringBuffer buffer, int buffer_length) {
     _extractLibraryIfRequired();
 
-    final ptr = malloc.allocate<Int8>(buffer_length);
+    final ptr = malloc.allocate<Char>(buffer_length);
     try {
       var result = NativeMethods.plc_tag_get_string(tag_id, string_start_offset, ptr, buffer_length);
 
       if (result == STATUS_CODES.PLCTAG_STATUS_OK.value) {
+        final raw = ptr.cast<Uint8>();
         for (int i = 0; i < buffer_length; i++) {
-          buffer.write(ascii.decode([(ptr + i).value]));
+          buffer.write(ascii.decode([(raw + i).value]));
         }
       }
 

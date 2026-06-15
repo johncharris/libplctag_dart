@@ -1,5 +1,5 @@
 import 'dart:ffi' as ffi;
-import 'dart:io' show File, Platform;
+import 'dart:io' show Directory, File, Platform;
 import 'package:path/path.dart' as path;
 
 /// Locates the platform-specific libplctag binary and opens it.
@@ -53,8 +53,22 @@ class LibraryExtractor {
       return null;
     }
 
-    var dir = path.dirname(Platform.script.toFilePath());
-    for (var depth = 0; depth < 6; depth++) {
+    final seeds = <String>{
+      path.dirname(Platform.script.toFilePath()),
+      Directory.current.path,
+      path.dirname(Platform.resolvedExecutable),
+    };
+
+    for (final seed in seeds) {
+      final found = _walkUp(seed, archDir, libName);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
+  static String? _walkUp(String start, String archDir, String libName) {
+    var dir = start;
+    for (var depth = 0; depth < 8; depth++) {
       final candidate = path.join(dir, 'lib', 'libplctag', archDir, libName);
       if (File(candidate).existsSync()) return candidate;
       final parent = path.dirname(dir);
