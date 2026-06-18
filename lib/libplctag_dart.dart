@@ -27,6 +27,8 @@ export 'package:libplctag_dart/data_types/string_plc_mapper.dart';
 export 'package:libplctag_dart/data_types/tag_info.dart';
 export 'package:libplctag_dart/data_types/tag_info_plc_mapper.dart';
 export 'package:libplctag_dart/data_types/timer_plc_mapper.dart';
+export 'package:libplctag_dart/data_types/udt_info.dart';
+export 'package:libplctag_dart/data_types/udt_info_plc_mapper.dart';
 export 'package:libplctag_dart/data_types/udint_plc_mapper.dart';
 export 'package:libplctag_dart/data_types/uint_plc_mapper.dart';
 export 'package:libplctag_dart/data_types/ulint_plc_mapper.dart';

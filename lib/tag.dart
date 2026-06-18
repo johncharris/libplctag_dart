@@ -82,6 +82,13 @@ class Tag {
   bool? get useConnectedMessaging => _tag.useConnectedMessaging;
   set useConnectedMessaging(bool? value) => _tag.useConnectedMessaging = value;
 
+  /// When false, force a dedicated TCP session for this tag instead of
+  /// reusing the libplctag connection pool. Useful for one-shot probes
+  /// that would otherwise contend with a long-running poller on the same
+  /// gateway. Translates to `share_session=0`.
+  bool? get shareSession => _tag.shareSession;
+  set shareSession(bool? value) => _tag.shareSession = value;
+
   /// Periodic auto-read interval. Used in conjunction with [events] to
   /// react to PLC-side changes.
   Duration? get autoSyncReadInterval => _tag.autoSyncReadInterval;

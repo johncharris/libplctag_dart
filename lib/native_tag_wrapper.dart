@@ -96,6 +96,18 @@ class NativeTagWrapper {
     _useConnectedMessaging = value;
   }
 
+  /// When false, libplctag opens a dedicated TCP session for this tag
+  /// instead of reusing a pooled one. Useful for one-shot reads that must
+  /// not contend with a long-lived poller already talking to the same PLC.
+  /// Translates to `share_session=0` / `share_session=1` in the attribute
+  /// string. Default `null` lets libplctag decide.
+  bool? _shareSession;
+  bool? get shareSession => _checkAlive(_shareSession);
+  set shareSession(bool? value) {
+    _assertMutable();
+    _shareSession = value;
+  }
+
   /// Cached read interval. Pre-init this is local state; post-init it's
   /// read/written via `plc_tag_get_int_attribute` so the value reflects
   /// what the library is actually using.
@@ -566,6 +578,7 @@ class NativeTagWrapper {
       'name': name,
       'read_cache_ms': readCacheMillisecondDuration?.toString(),
       'use_connected_msg': formatBool(useConnectedMessaging),
+      'share_session': formatBool(shareSession),
       'auto_sync_read_ms': autoSyncReadInterval?.inMilliseconds.toString(),
       'auto_sync_write_ms': autoSyncWriteInterval?.inMilliseconds.toString(),
       'debug': debugLevel == DebugLevel.none ? null : debugLevel.value.toString(),
